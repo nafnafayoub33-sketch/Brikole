@@ -54,7 +54,7 @@ export function ProviderCard({ provider, language }: { provider: Provider; langu
           <div className="flex items-center gap-2.5">
             <Avatar name={provider.full_name} url={provider.avatar_url} />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-fg">
+              <span dir="auto" className="block truncate text-sm font-semibold text-fg">
                 {provider.full_name}
               </span>
               <span className="block truncate text-xs text-fg-subtle">
@@ -64,7 +64,7 @@ export function ProviderCard({ provider, language }: { provider: Provider; langu
           </div>
 
           {provider.headline && (
-            <p className="line-clamp-2 text-sm leading-snug text-fg-muted">
+            <p dir="auto" className="line-clamp-2 text-sm leading-snug text-fg-muted">
               {provider.headline}
             </p>
           )}

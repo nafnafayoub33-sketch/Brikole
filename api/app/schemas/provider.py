@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.core.enums import ProviderStatus
 from app.schemas.catalog import TradeOut
 from app.schemas.common import ApiModel
@@ -39,3 +41,43 @@ class ProviderCardOut(ApiModel):
     #: Null when he would rather quote per job. The card omits it rather than
     #: inventing a number.
     starting_price_centimes: int | None
+
+
+class ProviderPhotoOut(ApiModel):
+    id: int
+    url: str
+
+
+class ProviderProfileOut(ProviderCardOut):
+    """The card, plus everything P3 shows that a grid has no room for."""
+
+    bio: str
+    radius_km: int
+    member_since: datetime
+
+    #: How many reviews gave each score, 1 through 5. The bar chart on P3 reads
+    #: straight off it, and a rating with no distribution behind it is a number
+    #: nobody can check.
+    rating_breakdown: dict[int, int]
+
+    photos: list[ProviderPhotoOut]
+
+
+class ReviewAuthorOut(ApiModel):
+    #: First name and last initial. A review is public; a full name need not be.
+    display_name: str
+    city: ProviderCityOut | None
+
+
+class ReviewOut(ApiModel):
+    id: int
+    rating: int
+    comment: str | None
+    created_at: datetime
+
+    #: The tradesman answers once. Shown under the review it answers.
+    reply: str | None
+    replied_at: datetime | None
+
+    author: ReviewAuthorOut
+    trade: TradeOut | None

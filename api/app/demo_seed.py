@@ -16,23 +16,36 @@ from __future__ import annotations
 
 import random
 import sys
+from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.core.enums import ProviderStatus, Role
+from app.core.enums import (
+    JobStatus,
+    OfferStatus,
+    ProviderStatus,
+    RequestStatus,
+    Role,
+    Urgency,
+)
 from app.core.money import dirhams
 from app.core.policy import FREE_LEADS_NEW_PROVIDER
 from app.core.security import hash_password
 from app.db import session_scope
+from app.models.base import utcnow
 from app.models.catalog import City, Trade
 from app.models.credit import CreditAccount
+from app.models.job import Job, Review
+from app.models.offer import Offer
 from app.models.provider import ProviderProfile
+from app.models.request import ServiceRequest
 from app.models.user import User
 
 DEMO_PASSWORD = "demo1234"
 DEMO_PHONE_PREFIX = "+21277"  # a block real numbers never fall in
+DEMO_CLIENT_PREFIX = "+21276"
 
 FIRST_NAMES = [
     "Youssef", "Rachid", "Hamid", "Abdelilah", "Mustapha", "Karim", "Said",
@@ -247,6 +260,330 @@ def backfill(db: Session, *, rng: random.Random) -> int:
     return touched
 
 
+JOB_TITLES = {
+    "plombier": ["Fuite sous l'évier", "Chauffe-eau en panne", "تبديل الروبيني"],
+    "electricien": ["Tableau électrique à revoir", "Prises à ajouter", "الضو طافي فالصالون"],
+    "peintre": ["Repeindre le salon", "Façade à rafraîchir", "صباغة بيت النعاس"],
+    "menuisier": ["Placard sur mesure", "Porte à ajuster", "خزانة ديال الخشب"],
+    "lavage-auto": ["Lavage complet à domicile", "Nettoyage des sièges", "غسيل الطوموبيل فالدار"],
+    "climatisation": ["Pose d'un split", "Recharge de gaz", "تركيب مكيف"],
+    "macon": ["Mur à monter", "Dalle de terrasse", "ترميم الحيط"],
+    "serrurier": ["Porte claquée", "Serrure à changer", "تبديل القفل"],
+    "carreleur": ["Carrelage salle de bain", "Sol du salon", "تبليط الحمام"],
+    "jardinier": ["Taille des arbres", "Entretien du jardin", "تشذيب الشجر"],
+    "menage": ["Grand nettoyage", "Ménage après travaux", "تنظيف الدار"],
+    "demenagement": ["Déménagement 2 pièces", "Transport d'un canapé", "نقل الأثاث"],
+    "vitrier": ["Vitre cassée", "Miroir à poser", "تبديل الزاج"],
+    "electromenager": ["Lave-linge qui fuit", "Frigo qui ne refroidit plus", "إصلاح الثلاجة"],
+    "soudeur": ["Portail à souder", "Grille de fenêtre", "لحام الباب"],
+    "antenne": ["Parabole à régler", "Antenne à poser", "ضبط البارابول"],
+}
+
+#: What people actually write. Short, specific, and in whichever language they
+#: think in — which is the mix the page has to lay out without breaking.
+GOOD_COMMENTS = [
+    "Travail propre et rapide, je recommande.",
+    "Ponctuel et très professionnel. Merci !",
+    "Bon rapport qualité-prix, rien à redire.",
+    "Il a bien expliqué le problème avant de commencer.",
+    "Nickel, il a même nettoyé après lui.",
+    "Très satisfait, je le rappellerai sans hésiter.",
+    "Sérieux et bien équipé. Rien à signaler.",
+    "Intervention le jour même, problème réglé.",
+    "Prix annoncé, prix payé. Ça fait plaisir.",
+    "Il a pris le temps de bien faire les choses.",
+    "Poli, à l'heure, et le résultat est impeccable.",
+    "Deuxième fois que je fais appel à lui, toujours au top.",
+    "خدمة نظيفة و بسرعة، الله يعطيه الصحة.",
+    "جا فالوقت و الثمن كان معقول.",
+    "معلّم فحالو، خدم مزيان.",
+    "الله يبارك، خدمة متقنة و ثمن مناسب.",
+    "شرح ليا كلشي قبل ما يبدا، و صايب المشكل.",
+    "نصحت بيه جيراني، خدام نقي.",
+    "جا نهار داكشي، ماخلاش المشكل يتعطل.",
+    "راجل خدّام و كيحترم الوقت.",
+]
+MIXED_COMMENTS = [
+    "Bon travail mais il est arrivé avec du retard.",
+    "Correct dans l'ensemble, un peu cher à mon avis.",
+    "Le résultat est bien, la finition pouvait être plus soignée.",
+    "Ça fonctionne, mais il a fallu insister pour la facture.",
+    "خدم مزيان ولكن تعطل شوية.",
+    "الخدمة مزيانة، والثمن شوية غالي.",
+    "صايب المشكل، ولكن خلا شوية دالوسخ.",
+]
+POOR_COMMENTS = [
+    "Il a fallu le rappeler deux fois pour terminer.",
+    "Pas convaincu par la finition.",
+    "Devis dépassé sans prévenir.",
+    "ما عجباتنيش الخدمة بزاف.",
+    "تعطل بزاف و ما كملش الخدمة نهار الأول.",
+]
+REPLIES = [
+    "Merci pour votre confiance !",
+    "Merci beaucoup, à votre service.",
+    "شكرا بزاف على الثقة.",
+]
+
+
+BIO_TEMPLATES = [
+    "{years} ans d'expérience. Je travaille à {city} et dans les environs. "
+    "Devis gratuit, travail garanti.",
+    "Artisan installé à {city} depuis {years} ans. Je me déplace rapidement et "
+    "je laisse le chantier propre.",
+    "Je fais ce métier depuis {years} ans. Matériel professionnel, prix clair "
+    "annoncé avant de commencer.",
+    "{years} سنة دالخبرة. كنخدم فـ{city} و النواحي، و الثمن كنتفاهمو عليه قبل "
+    "ما نبدا.",
+    "معلّم فـ{city}، {years} سنة فالميدان. خدمة نظيفة و فالوقت.",
+]
+
+
+def backfill_bios(db: Session, *, rng: random.Random) -> int:
+    """A profile page with an empty description is a page with a hole in it."""
+    empty = (
+        db.execute(
+            select(ProviderProfile)
+            .join(User, User.id == ProviderProfile.user_id)
+            .where(User.phone.like(f"{DEMO_PHONE_PREFIX}%"), ProviderProfile.bio == "")
+        )
+        .scalars()
+        .unique()
+    )
+
+    touched = 0
+    for profile in empty:
+        profile.bio = rng.choice(BIO_TEMPLATES).format(
+            years=max(1, profile.years_experience), city=profile.city.name_fr
+        )
+        touched += 1
+    return touched
+
+
+def refresh_comments(db: Session, *, rng: random.Random) -> int:
+    """Re-pick a comment for every demo review.
+
+    The first pool was small enough that one tradesman's page showed the same
+    sentence twice, which reads as a bug rather than as two people agreeing.
+    Demo rows only — nothing here touches a review a real person wrote.
+    """
+    demo_authors = select(User.id).where(User.phone.like(f"{DEMO_CLIENT_PREFIX}%"))
+    reviews = list(
+        db.execute(
+            select(Review)
+            .where(Review.author_id.in_(demo_authors))
+            .order_by(Review.provider_id, Review.id)
+        )
+        .scalars()
+        .unique()
+    )
+
+    # Draw without replacement per tradesman. Picking at random put the same
+    # sentence twice on one page often enough to read as a bug rather than as
+    # two people happening to agree.
+    per_provider: dict[int, dict[str, list[str]]] = {}
+    touched = 0
+
+    for review in reviews:
+        bucket = "good" if review.rating >= 4 else "mixed" if review.rating == 3 else "poor"
+        pools = per_provider.setdefault(review.provider_id, {})
+
+        if not pools.get(bucket):
+            source = (
+                GOOD_COMMENTS
+                if bucket == "good"
+                else MIXED_COMMENTS
+                if bucket == "mixed"
+                else POOR_COMMENTS
+            )
+            shuffled = list(source)
+            rng.shuffle(shuffled)
+            pools[bucket] = shuffled
+
+        review.comment = pools[bucket].pop()
+        touched += 1
+
+    return touched
+
+
+def seed_clients(db: Session, *, total: int, rng: random.Random) -> list[User]:
+    """Somebody has to have written the reviews."""
+    existing = list(
+        db.execute(select(User).where(User.phone.like(f"{DEMO_CLIENT_PREFIX}%"))).scalars()
+    )
+    if len(existing) >= total:
+        return existing[:total]
+
+    password_hash = hash_password(DEMO_PASSWORD)
+    cities = list(db.execute(select(City)).scalars())
+
+    for index in range(len(existing), total):
+        user = User(
+            phone=f"{DEMO_CLIENT_PREFIX}{index:07d}",
+            password_hash=password_hash,
+            full_name=f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}",
+            role=Role.CLIENT,
+            city_id=rng.choice(cities).id,
+            language="ar",
+        )
+        db.add(user)
+        existing.append(user)
+
+    db.flush()
+    return existing
+
+
+def seed_history(db: Session, *, rng: random.Random) -> tuple[int, int]:
+    """Give every demo tradesman a past: requests, offers, jobs, reviews.
+
+    The rating on a card has to be the average of reviews somebody can open and
+    read. Inventing `rating_avg` was fine while nothing displayed the reviews;
+    P3 displays them, and a profile whose stars do not match its reviews is the
+    first thing a visitor notices.
+    """
+    providers = list(
+        db.execute(
+            select(ProviderProfile)
+            .join(User, User.id == ProviderProfile.user_id)
+            .where(
+                User.phone.like(f"{DEMO_PHONE_PREFIX}%"),
+                ProviderProfile.status == ProviderStatus.APPROVED,
+            )
+        )
+        .scalars()
+        .unique()
+    )
+    if not providers:
+        return 0, 0
+
+    # Already done? Leave it alone rather than doubling everyone's history.
+    if db.execute(select(func.count()).select_from(Job)).scalar_one() > 0:
+        return 0, 0
+
+    clients = seed_clients(db, total=90, rng=rng)
+    now = utcnow()
+    jobs_made = 0
+    reviews_made = 0
+
+    for profile in providers:
+        trades = profile.trades
+        if not trades:
+            continue
+
+        # A long tail: most tradesmen have a handful of jobs, a few have many.
+        count = rng.choice([0, 0, 1, 2, 3, 3, 4, 5, 6, 8, 11, 14])
+        # Backdate the account so "member since" is not all the same week.
+        profile.created_at = now - timedelta(days=rng.randint(20, 900))
+
+        for _ in range(count):
+            trade = rng.choice(trades)
+            client = rng.choice(clients)
+            done_at = now - timedelta(days=rng.randint(1, 420), hours=rng.randint(0, 23))
+
+            price = profile.starting_price_centimes or dirhams(200)
+            agreed = int(price * rng.choice([1.0, 1.2, 1.5, 2.0, 2.5]))
+
+            request = ServiceRequest(
+                client_id=client.id,
+                trade_id=trade.id,
+                city_id=profile.city_id,
+                title=rng.choice(JOB_TITLES.get(trade.slug, ["Petit travail"])),
+                description="",
+                address="—",
+                urgency=rng.choice(list(Urgency)),
+                status=RequestStatus.DONE,
+                offers_count=rng.randint(1, 5),
+                created_at=done_at - timedelta(days=rng.randint(1, 6)),
+            )
+            db.add(request)
+            db.flush()
+
+            offer = Offer(
+                request_id=request.id,
+                provider_id=profile.id,
+                price_centimes=agreed,
+                message="",
+                status=OfferStatus.ACCEPTED,
+                responded_at=done_at,
+                lead_fee_centimes=dirhams(10),
+                created_at=request.created_at,
+            )
+            db.add(offer)
+            db.flush()
+
+            job = Job(
+                request_id=request.id,
+                offer_id=offer.id,
+                client_id=client.id,
+                provider_id=profile.id,
+                agreed_price_centimes=agreed,
+                status=JobStatus.CONFIRMED,
+                started_at=done_at - timedelta(hours=3),
+                finished_at=done_at,
+                confirmed_at=done_at + timedelta(hours=2),
+                created_at=request.created_at,
+            )
+            db.add(job)
+            db.flush()
+            jobs_made += 1
+
+            # Four jobs in five get reviewed, which is about what a marketplace
+            # sees and enough to make "no reviews yet" a state that appears.
+            if rng.random() >= 0.8:
+                continue
+
+            roll = rng.random()
+            if roll < 0.74:
+                rating, comments = rng.choice([4, 5, 5, 5]), GOOD_COMMENTS
+            elif roll < 0.93:
+                rating, comments = 3, MIXED_COMMENTS
+            else:
+                rating, comments = rng.choice([1, 2]), POOR_COMMENTS
+
+            review = Review(
+                job_id=job.id,
+                author_id=client.id,
+                provider_id=profile.id,
+                rating=rating,
+                comment=rng.choice(comments),
+                created_at=done_at + timedelta(days=rng.randint(0, 3)),
+            )
+            if rating >= 4 and rng.random() < 0.3:
+                review.reply = rng.choice(REPLIES)
+                review.replied_at = review.created_at + timedelta(days=1)
+
+            db.add(review)
+            reviews_made += 1
+
+    db.flush()
+    recompute_caches(db, providers)
+    return jobs_made, reviews_made
+
+
+def recompute_caches(db: Session, providers: list[ProviderProfile]) -> None:
+    """Derive the numbers on the card from the rows behind them.
+
+    `jobs_done`, `rating_avg` and `rating_count` are caches. Seeding them by
+    hand and the reviews separately is how a profile ends up claiming 4.9 over
+    a page of three-star reviews.
+    """
+    for profile in providers:
+        profile.jobs_done = db.execute(
+            select(func.count())
+            .select_from(Job)
+            .where(Job.provider_id == profile.id, Job.status == JobStatus.CONFIRMED)
+        ).scalar_one()
+
+        count, average = db.execute(
+            select(func.count(), func.avg(Review.rating)).where(
+                Review.provider_id == profile.id, Review.is_hidden.is_(False)
+            )
+        ).one()
+
+        profile.rating_count = int(count)
+        profile.rating_avg = 0.0 if not count else round(float(average), 1)
+
+
 def main() -> int:
     settings = get_settings()
     if settings.is_production:
@@ -256,8 +593,12 @@ def main() -> int:
     rng = random.Random(20260829)  # deterministic: the same demo every time
     with session_scope() as db:
         created, backfilled = seed_demo(db, total=240, rng=rng)
+        jobs, reviews = seed_history(db, rng=rng)
+        bios = backfill_bios(db, rng=rng)
+        comments = refresh_comments(db, rng=rng)
 
     print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
+    print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0
 

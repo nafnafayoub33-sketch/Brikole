@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/data/client'
-import type { Page, Provider } from '@/data/types'
+import type { Page, Provider, ProviderProfile, Review } from '@/data/types'
 
 export type ProviderSort = 'rating' | 'jobs' | 'price' | 'newest'
 
@@ -41,5 +41,30 @@ export function useProviders({
     queryFn: () => api<Page<Provider>>(`/providers?${params}`, { authenticated: false }),
     staleTime: 60_000,
     enabled,
+  })
+}
+
+
+export function useProvider(providerId: number | null) {
+  return useQuery({
+    queryKey: ['provider', providerId],
+    queryFn: () => api<ProviderProfile>(`/providers/${providerId}`, { authenticated: false }),
+    enabled: providerId !== null,
+    staleTime: 60_000,
+  })
+}
+
+export function useProviderReviews(
+  providerId: number | null,
+  { page = 1, perPage = 10 }: { page?: number; perPage?: number } = {},
+) {
+  return useQuery({
+    queryKey: ['provider-reviews', providerId, page, perPage],
+    queryFn: () =>
+      api<Page<Review>>(`/providers/${providerId}/reviews?page=${page}&per_page=${perPage}`, {
+        authenticated: false,
+      }),
+    enabled: providerId !== null,
+    staleTime: 60_000,
   })
 }

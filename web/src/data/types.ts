@@ -96,6 +96,32 @@ export interface Provider {
   starting_price_centimes: number | null
 }
 
+export interface ProviderPhoto {
+  id: number
+  url: string
+}
+
+/** The card, plus what a decision needs a whole page for. */
+export interface ProviderProfile extends Provider {
+  bio: string
+  radius_km: number
+  member_since: string
+  /** How many reviews gave each score, 1 through 5. */
+  rating_breakdown: Record<string, number>
+  photos: ProviderPhoto[]
+}
+
+export interface Review {
+  id: number
+  rating: number
+  comment: string | null
+  created_at: string
+  reply: string | null
+  replied_at: string | null
+  author: { display_name: string; city: ProviderCity | null }
+  trade: Trade | null
+}
+
 export interface Page<T> {
   items: T[]
   total: number

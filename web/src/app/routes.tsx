@@ -9,6 +9,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { LandingPage } from '@/features/public/LandingPage'
+import { ProviderProfilePage } from '@/features/public/ProviderProfilePage'
 import { NotFoundPage } from '@/features/public/NotFoundPage'
 import { NotBuilt } from '@/ui/NotBuilt'
 
@@ -28,7 +29,7 @@ export function AppRoutes() {
         <Route path="services/:slug" element={<BrowsePage />} />
         {/* Public profile lives under /m3allem, not /pro: /pro is the
             tradesman's own area and /pro/:id would fight /pro/requests. */}
-        <Route path="brikole/:id" element={<NotBuilt screen="P3" />} />
+        <Route path="m3allem/:id" element={<ProviderProfilePage />} />
       </Route>
 
       {/* Outside PublicLayout on purpose: AuthLayout is a full-screen frame
