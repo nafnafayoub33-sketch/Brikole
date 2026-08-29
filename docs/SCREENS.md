@@ -46,9 +46,13 @@ Trades & cities · Settings · Audit log.
   a trade with nobody in this city (shown, with zero, never hidden)
 - → P2, P4, P5
 
-### P2 · Trade page — `/services/:slug`
-- **Contents:** trade name and description, city filter, list of approved tradesmen
-  (photo, name, rating, jobs done, city), and a permanent *Describe your job* card
+### P2 · Browse — `/services` and `/services/:slug`
+- **Contents:** the same screen with and without a trade. `/services` lists every
+  approved tradesman in the chosen city; `/services/:slug` narrows it to one trade
+  and adds its name and description. Cards carry cover, name, city, headline,
+  rating, jobs done and the starting price — the same card the home page uses.
+  A permanent *Describe your job* card sits in the grid.
+- **Sorting:** best rated (default) · most jobs · cheapest to start · newest
 - **Actions:** filter by city · open a profile · start a request
 - **States:** loading · no tradesman in this city yet (still offer to post the
   request — it is how the marketplace fills) · error with retry

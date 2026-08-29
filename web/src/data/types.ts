@@ -71,6 +71,38 @@ export interface City {
   longitude: number
 }
 
+export interface ProviderCity {
+  id: number
+  slug: string
+  name_ar: string
+  name_fr: string
+  name_en: string
+}
+
+/** One card in the grid: everything a client decides with, and nothing else. */
+export interface Provider {
+  id: number
+  full_name: string
+  avatar_url: string | null
+  headline: string | null
+  status: ProviderStatus
+  city: ProviderCity
+  trades: Trade[]
+  rating_avg: number
+  rating_count: number
+  jobs_done: number
+  years_experience: number
+  /** Null when he would rather quote per job — the card omits it. */
+  starting_price_centimes: number | null
+}
+
+export interface Page<T> {
+  items: T[]
+  total: number
+  page: number
+  per_page: number
+}
+
 /** Trades and cities carry their own three names — an admin adds them at
  *  runtime, so they cannot be translation keys. */
 export function localisedName(

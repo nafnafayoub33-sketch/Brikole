@@ -58,8 +58,17 @@ class ProviderProfile(PkMixin, TimestampMixin, Base):
     #: How far he is willing to travel. Bounds the feed at M4.
     radius_km: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
 
+    #: The one line a client reads before anything else — "Plomberie et
+    #: dépannage, 7j/7". It is what turns a row in a table into a card worth
+    #: clicking, so it is a column rather than the first line of the bio.
+    headline: Mapped[str | None] = mapped_column(String(160), nullable=True)
     bio: Mapped[str] = mapped_column(Text, nullable=False, default="")
     years_experience: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    #: What he charges to turn up and look, or his usual floor. Optional: the
+    #: price of the job itself is still decided per request, in an offer. Null
+    #: means he would rather not say, and the card simply omits it.
+    starting_price_centimes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     #: Private — the bucket it lives in is never public-read. Admins only (A2).
     id_card_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

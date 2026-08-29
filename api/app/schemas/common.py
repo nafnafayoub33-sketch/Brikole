@@ -25,6 +25,8 @@ class ErrorOut(BaseModel):
 
 
 class Page(BaseModel, Generic[T]):
+    model_config = ConfigDict(from_attributes=True)
+
     items: list[T]
     total: int
     page: int = Field(ge=1)

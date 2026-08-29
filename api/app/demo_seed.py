@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.core.enums import ProviderStatus, Role
+from app.core.money import dirhams
 from app.core.policy import FREE_LEADS_NEW_PROVIDER
 from app.core.security import hash_password
 from app.db import session_scope
@@ -53,6 +54,73 @@ CITY_WEIGHT = {
     "tetouan": 4, "mohammedia": 4, "el-jadida": 3, "safi": 3, "nador": 3,
     "beni-mellal": 3, "khouribga": 2, "essaouira": 2, "laayoune": 1,
     "ouarzazate": 1,
+}
+
+#: What a tradesman in each trade typically starts at, in dirhams: a call-out
+#: or a floor price, not the job. The job itself is still quoted per request.
+BASE_PRICE_DH = {
+    "plombier": 150, "electricien": 150, "peintre": 300, "menuisier": 250,
+    "lavage-auto": 80, "climatisation": 250, "macon": 280, "serrurier": 120,
+    "carreleur": 220, "jardinier": 150, "menage": 120, "demenagement": 400,
+    "vitrier": 200, "electromenager": 150, "soudeur": 200, "antenne": 150,
+}
+
+#: The one line that turns a row into a card worth clicking. Real tradesmen
+#: write these themselves, in whichever language they think in — so the demo
+#: mixes French and Arabic, which is also what the layout has to survive.
+HEADLINES = {
+    "plombier": [
+        "Plomberie et dépannage, 7j/7",
+        "Fuites, chauffe-eau, sanitaires",
+        "سباكة وإصلاح التسربات بسرعة",
+    ],
+    "electricien": [
+        "Installation et dépannage électrique",
+        "Tableaux, prises, éclairage",
+        "كهرباء المنازل والمحلات",
+    ],
+    "peintre": [
+        "Peinture intérieure et façades",
+        "Finitions soignées, devis gratuit",
+        "صباغة وديكور بجودة عالية",
+    ],
+    "menuisier": [
+        "Menuiserie bois sur mesure",
+        "Portes, placards, cuisines",
+        "نجارة الخشب حسب الطلب",
+    ],
+    "lavage-auto": [
+        "Lavage auto à domicile",
+        "Nettoyage intérieur et extérieur",
+        "غسيل السيارات عندك فالدار",
+    ],
+    "climatisation": [
+        "Installation et entretien de clim",
+        "Pose, recharge de gaz, entretien",
+        "تركيب وصيانة المكيفات",
+    ],
+    "macon": ["Maçonnerie et gros œuvre", "Murs, dalles, rénovation", "بناء وترميم"],
+    "serrurier": [
+        "Ouverture de porte 24h/24",
+        "Serrures et blindage",
+        "فتح الأبواب وإصلاح الأقفال",
+    ],
+    "carreleur": ["Pose de carrelage et faïence", "Sols, murs, salles de bain", "تبليط وزليج"],
+    "jardinier": ["Entretien de jardins", "Taille, tonte, arrosage", "العناية بالحدائق"],
+    "menage": [
+        "Ménage et grand nettoyage",
+        "Maisons, bureaux, après travaux",
+        "تنظيف المنازل والمكاتب",
+    ],
+    "demenagement": ["Déménagement avec camion", "Emballage et transport", "نقل الأثاث بشاحنة"],
+    "vitrier": ["Vitrerie et miroiterie", "Remplacement de vitres", "تركيب الزجاج والمرايا"],
+    "electromenager": [
+        "Réparation électroménager",
+        "Lave-linge, frigo, four",
+        "إصلاح الأجهزة المنزلية",
+    ],
+    "soudeur": ["Soudure fer et inox", "Portails, grilles, structures", "لحام الحديد والستانلس"],
+    "antenne": ["Antennes et paraboles", "Installation et réglage", "تركيب وضبط الهوائيات"],
 }
 
 #: And how common each trade is. A welder is rarer than a plumber.
@@ -127,6 +195,17 @@ def seed_demo(db: Session, *, total: int, rng: random.Random) -> tuple[int, int]
             picked.add(rng.choice(trade_pool))
         profile.trades = list(picked)
 
+        main_trade = next(iter(picked))
+        profile.headline = rng.choice(HEADLINES.get(main_trade.slug, ["Services à domicile"]))
+
+        # Four in five say a starting price; the rest would rather quote, and
+        # the card has to look right without one.
+        if rng.random() < 0.8:
+            base = BASE_PRICE_DH.get(main_trade.slug, 150)
+            profile.starting_price_centimes = dirhams(
+                int(base * rng.choice([0.7, 0.85, 1.0, 1.0, 1.2, 1.5]))
+            )
+
         db.add(profile)
         db.flush()
 
@@ -139,7 +218,33 @@ def seed_demo(db: Session, *, total: int, rng: random.Random) -> tuple[int, int]
         )
         created += 1
 
-    return created, len(existing)
+    backfilled = backfill(db, rng=rng)
+    return created, backfilled
+
+
+def backfill(db: Session, *, rng: random.Random) -> int:
+    """Give demo tradesmen created before this column existed a headline."""
+    stale = (
+        db.execute(
+            select(ProviderProfile)
+            .join(User, User.id == ProviderProfile.user_id)
+            .where(User.phone.like(f"{DEMO_PHONE_PREFIX}%"), ProviderProfile.headline.is_(None))
+        )
+        .scalars()
+        .unique()
+    )
+
+    touched = 0
+    for profile in stale:
+        slug = profile.trades[0].slug if profile.trades else ""
+        profile.headline = rng.choice(HEADLINES.get(slug, ["Services à domicile"]))
+        if rng.random() < 0.8:
+            base = BASE_PRICE_DH.get(slug, 150)
+            profile.starting_price_centimes = dirhams(
+                int(base * rng.choice([0.7, 0.85, 1.0, 1.0, 1.2, 1.5]))
+            )
+        touched += 1
+    return touched
 
 
 def main() -> int:
@@ -150,9 +255,9 @@ def main() -> int:
 
     rng = random.Random(20260829)  # deterministic: the same demo every time
     with session_scope() as db:
-        created, already = seed_demo(db, total=240, rng=rng)
+        created, backfilled = seed_demo(db, total=240, rng=rng)
 
-    print(f"demo tradesmen created: {created} (already present: {already})")
+    print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0
 

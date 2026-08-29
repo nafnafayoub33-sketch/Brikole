@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { useCities, useTrades } from '@/data/catalog'
 import { useCityStore } from '@/data/cityPreference'
+import { useProviders } from '@/data/providers'
 import { localisedName, type Trade } from '@/data/types'
 import type { Language } from '@/lib/i18n'
 import { Button } from '@/ui/Button'
@@ -13,9 +14,10 @@ import { ErrorState } from '@/ui/ErrorState'
 import { HeroArt } from '@/ui/illustrations/AuthArt'
 import { AvatarStack } from '@/ui/illustrations/People'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
+import { ProviderCard, ProviderCardSkeleton } from '@/ui/ProviderCard'
 import { Skeleton } from '@/ui/Skeleton'
 
-/** P1 — explain the thing in five seconds, and start a request. */
+/** P1 — the tradesmen first, because that is what a visitor came to see. */
 export function LandingPage() {
   const { t, i18n } = useTranslation()
   const language = i18n.language as Language
@@ -24,11 +26,12 @@ export function LandingPage() {
   const { cityId } = useCityStore()
   const trades = useTrades(cityId)
   const cities = useCities()
+  const providers = useProviders({ cityId, sort: 'rating', perPage: 8 })
   const [query, setQuery] = useState('')
 
-  const cityName = cities.data?.find((city) => city.id === cityId)
-  const context = cityName
-    ? t('landing.countsInCity', { city: localisedName(cityName, language) })
+  const selectedCity = cities.data?.find((city) => city.id === cityId)
+  const context = selectedCity
+    ? t('landing.countsInCity', { city: localisedName(selectedCity, language) })
     : t('landing.countsEverywhere')
 
   function search(event: FormEvent) {
@@ -37,18 +40,12 @@ export function LandingPage() {
     navigate('/client/requests/new')
   }
 
-  // Busiest first, so the chips are the trades somebody can actually be served
-  // in, in the city they picked.
-  const popular = [...(trades.data ?? [])]
-    .sort((a, b) => b.providers_count - a.providers_count)
-    .slice(0, 4)
-
   return (
     <>
       <section className="brand-panel relative overflow-hidden">
         <div className="brand-grid absolute inset-0 opacity-50" aria-hidden />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-5 py-14 lg:grid-cols-[1.1fr_1fr] lg:py-20">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-8 px-5 py-12 lg:grid-cols-[1.1fr_1fr] lg:py-16">
           <div>
             <h1 className="text-4xl leading-tight font-bold text-white sm:text-5xl">
               {t('landing.title')}
@@ -80,61 +77,62 @@ export function LandingPage() {
               </Button>
             </form>
 
-            {popular.length > 0 && (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-fg-on-brand-muted">
-                  {t('landing.popular')}
-                </span>
-                {popular.map((trade) => (
-                  <Link
-                    key={trade.id}
-                    to={`/services/${trade.slug}`}
-                    className="rounded-pill border border-white/25 px-3 py-1.5 text-xs font-medium text-white transition-colors duration-(--duration-fast) hover:bg-white/15"
-                  >
-                    {localisedName(trade, language)}
-                  </Link>
-                ))}
-              </div>
-            )}
-
             <p className="mt-6 text-sm text-fg-on-brand-muted">{t('landing.trustNote')}</p>
           </div>
 
           <HeroArt
             className="hidden w-full lg:block"
-            city={cityName ? localisedName(cityName, language) : undefined}
+            city={selectedCity ? localisedName(selectedCity, language) : undefined}
           />
         </div>
       </section>
 
-      <section aria-labelledby="trades-heading" className="mx-auto max-w-6xl px-5 py-16">
+      {/* The tradesmen themselves, immediately. A marketplace that opens on a
+          grid of category tiles makes a visitor work before it shows them
+          anybody they could actually hire. */}
+      <section aria-labelledby="providers-heading" className="mx-auto max-w-6xl px-5 py-14">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 id="trades-heading" className="text-2xl font-bold text-fg">
-            {t('landing.tradesTitle')}
+          <h2 id="providers-heading" className="text-2xl font-bold text-fg">
+            {t('landing.topProviders')}
           </h2>
           <span className="text-sm font-medium text-fg-muted">{context}</span>
+          {providers.isSuccess && providers.data.total > 0 && (
+            <Link
+              to="/services"
+              className="ms-auto text-sm font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              {t('landing.seeAll')}
+            </Link>
+          )}
         </div>
 
         <div className="mt-6">
-          {/* The four states every list owes the reader. */}
-          {trades.isPending && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {providers.isPending && (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 8 }, (_, index) => (
-                <Skeleton key={index} className="h-36" />
+                <ProviderCardSkeleton key={index} />
               ))}
             </div>
           )}
-          {trades.isError && (
-            <ErrorState error={trades.error} onRetry={() => void trades.refetch()} />
+          {providers.isError && (
+            <ErrorState error={providers.error} onRetry={() => void providers.refetch()} />
           )}
-          {trades.isSuccess && trades.data.length === 0 && (
-            <EmptyState title={t('landing.tradesEmpty')} />
+          {providers.isSuccess && providers.data.items.length === 0 && (
+            <EmptyState
+              title={t('landing.noProviders')}
+              body={t('landing.forProsBody')}
+              action={
+                <Link to="/register">
+                  <Button variant="secondary">{t('landing.ctaProvider')}</Button>
+                </Link>
+              }
+            />
           )}
-          {trades.isSuccess && trades.data.length > 0 && (
-            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {trades.data.map((trade) => (
-                <li key={trade.id}>
-                  <TradeCard trade={trade} language={language} />
+          {providers.isSuccess && providers.data.items.length > 0 && (
+            <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {providers.data.items.map((provider) => (
+                <li key={provider.id}>
+                  <ProviderCard provider={provider} language={language} />
                 </li>
               ))}
             </ul>
@@ -142,28 +140,57 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section aria-labelledby="how-heading" className="bg-surface-2 py-16">
+      <section aria-labelledby="trades-heading" className="bg-surface-2 py-14">
         <div className="mx-auto max-w-6xl px-5">
-          <h2 id="how-heading" className="text-2xl font-bold text-fg">
-            {t('landing.howTitle')}
+          <h2 id="trades-heading" className="text-2xl font-bold text-fg">
+            {t('landing.browseByTrade')}
           </h2>
-          <ol className="mt-8 grid gap-8 sm:grid-cols-3">
-            {(['how1', 'how2', 'how3'] as const).map((step, index) => (
-              <li key={step} className="flex flex-col gap-3">
-                <span className="numeric flex size-11 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-fg shadow-brand">
-                  {index + 1}
-                </span>
-                <h3 className="text-lg font-semibold text-fg">{t(`landing.${step}Title`)}</h3>
-                <p className="text-sm leading-relaxed text-fg-muted">
-                  {t(`landing.${step}Body`)}
-                </p>
-              </li>
-            ))}
-          </ol>
+
+          <div className="mt-6">
+            {trades.isPending && (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: 8 }, (_, index) => (
+                  <Skeleton key={index} className="h-36" />
+                ))}
+              </div>
+            )}
+            {trades.isError && (
+              <ErrorState error={trades.error} onRetry={() => void trades.refetch()} />
+            )}
+            {trades.isSuccess && trades.data.length === 0 && (
+              <EmptyState title={t('landing.tradesEmpty')} />
+            )}
+            {trades.isSuccess && trades.data.length > 0 && (
+              <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {trades.data.map((trade) => (
+                  <li key={trade.id}>
+                    <TradeCard trade={trade} language={language} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-16">
+      <section aria-labelledby="how-heading" className="mx-auto max-w-6xl px-5 py-16">
+        <h2 id="how-heading" className="text-2xl font-bold text-fg">
+          {t('landing.howTitle')}
+        </h2>
+        <ol className="mt-8 grid gap-8 sm:grid-cols-3">
+          {(['how1', 'how2', 'how3'] as const).map((step, index) => (
+            <li key={step} className="flex flex-col gap-3">
+              <span className="numeric flex size-11 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-fg shadow-brand">
+                {index + 1}
+              </span>
+              <h3 className="text-lg font-semibold text-fg">{t(`landing.${step}Title`)}</h3>
+              <p className="text-sm leading-relaxed text-fg-muted">{t(`landing.${step}Body`)}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 pb-16">
         <div className="brand-panel relative overflow-hidden rounded-xl px-8 py-12 sm:px-12">
           <div className="brand-grid absolute inset-0 opacity-50" aria-hidden />
           <div className="relative max-w-2xl">
@@ -195,8 +222,6 @@ function TradeCard({ trade, language }: { trade: Trade; language: Language }) {
       </span>
       <span className="text-sm font-semibold text-fg">{localisedName(trade, language)}</span>
 
-      {/* The count is the whole reason to trust the tile. Zero says so plainly
-          rather than leaving the visitor to find out after writing a request. */}
       <span className="mt-auto flex items-center gap-2 pt-1">
         {count === 0 ? (
           <span className="text-xs text-fg-subtle">{t('landing.noProviderHere')}</span>
@@ -204,9 +229,7 @@ function TradeCard({ trade, language }: { trade: Trade; language: Language }) {
           <>
             <AvatarStack count={Math.min(3, count)} />
             <span className="text-xs font-medium text-fg-muted">
-              {count === 1
-                ? t('landing.providersOne')
-                : t('landing.providersMany', { count })}
+              {count === 1 ? t('landing.providersOne') : t('landing.providersMany', { count })}
             </span>
           </>
         )}

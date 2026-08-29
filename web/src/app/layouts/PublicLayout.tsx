@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom'
 
 import { useSession } from '@/data/auth'
 import { Button } from '@/ui/Button'
+import { CategoryBar } from '@/ui/CategoryBar'
 import { Logo } from '@/ui/illustrations/Logo'
 import { LanguageSelect } from '@/ui/LanguageSelect'
 import { ThemeToggle } from '@/ui/ThemeToggle'
@@ -46,6 +47,10 @@ export function PublicLayout() {
           </div>
         </div>
       </header>
+
+      {/* The trades are the site's navigation, so they sit under the header on
+          every public page rather than only on the home page. */}
+      <CategoryBar />
 
       <main className="flex-1">
         <Outlet />

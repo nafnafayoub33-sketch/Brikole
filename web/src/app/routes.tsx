@@ -23,6 +23,7 @@ export function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
+        <Route path="services" element={<NotBuilt screen="P2" />} />
         <Route path="services/:slug" element={<NotBuilt screen="P2" />} />
         {/* Public profile lives under /m3allem, not /pro: /pro is the
             tradesman's own area and /pro/:id would fight /pro/requests. */}
