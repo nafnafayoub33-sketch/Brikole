@@ -7,6 +7,7 @@ import { RequireRole } from '@/app/RequireRole'
 import { ForgotPage } from '@/features/auth/ForgotPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
+import { BrowsePage } from '@/features/public/BrowsePage'
 import { LandingPage } from '@/features/public/LandingPage'
 import { NotFoundPage } from '@/features/public/NotFoundPage'
 import { NotBuilt } from '@/ui/NotBuilt'
@@ -23,8 +24,8 @@ export function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
-        <Route path="services" element={<NotBuilt screen="P2" />} />
-        <Route path="services/:slug" element={<NotBuilt screen="P2" />} />
+        <Route path="services" element={<BrowsePage />} />
+        <Route path="services/:slug" element={<BrowsePage />} />
         {/* Public profile lives under /m3allem, not /pro: /pro is the
             tradesman's own area and /pro/:id would fight /pro/requests. */}
         <Route path="brikole/:id" element={<NotBuilt screen="P3" />} />

@@ -1,11 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
-import { useSession } from '@/data/auth'
 import { cn } from '@/ui/cn'
 import { LanguageSelect } from '@/ui/LanguageSelect'
 import { ThemeToggle } from '@/ui/ThemeToggle'
-import { UserMenu } from '@/ui/UserMenu'
+import { ProfileMenu } from '@/ui/ProfileMenu'
 
 export interface NavItem {
   to: string
@@ -18,7 +17,6 @@ export interface NavItem {
  */
 export function AppLayout({ items }: { items: NavItem[] }) {
   const { t } = useTranslation()
-  const { data: user } = useSession()
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -49,7 +47,7 @@ export function AppLayout({ items }: { items: NavItem[] }) {
           <div className="ms-auto flex items-center gap-2">
             <ThemeToggle className="hidden sm:inline-flex" />
             <LanguageSelect className="hidden md:inline-flex" />
-            {user && <UserMenu user={user} />}
+            <ProfileMenu />
           </div>
         </div>
       </header>

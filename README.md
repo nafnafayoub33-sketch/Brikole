@@ -111,7 +111,13 @@ placeholder when `ENV=production`.
 
 ## What is built
 
-Phase 0: the schema and its migration, phone+password auth with JWT, the four-role
-permission layer, seed data, and the React shell with the design tokens, the three
-languages and the role-gated router. Everything past that names the screen it stands
-in for, using the IDs from `docs/SCREENS.md`.
+Phase 0, plus the front of the marketplace: the schema and its migrations,
+phone+password auth with JWT, the four-role permission layer, seed data, and the
+React shell with the design tokens, the three languages and the role-gated router.
+
+On top of that, **P1** (home: hero, tradesmen, trades with live counts per city)
+and **P2** (`/services` and `/services/:slug`: search, city and sort controls,
+pagination), served by `GET /providers` and `GET /trades`.
+
+Everything past that names the screen it stands in for, using the IDs from
+`docs/SCREENS.md`.

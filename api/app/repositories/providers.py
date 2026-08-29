@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.enums import ProviderStatus, UserStatus
+from app.models.catalog import Trade
 from app.models.provider import ProviderProfile, provider_trades
 from app.models.user import User
 
@@ -42,6 +44,7 @@ class ProviderRepository:
     def list_cards(
         self,
         *,
+        query: str | None = None,
         trade_id: int | None = None,
         city_id: int | None = None,
         sort: ProviderSort = ProviderSort.RATING,
@@ -52,6 +55,9 @@ class ProviderRepository:
 
         if city_id is not None:
             stmt = stmt.where(ProviderProfile.city_id == city_id)
+
+        if query:
+            stmt = stmt.where(self._matches(query))
         if trade_id is not None:
             stmt = stmt.where(
                 ProviderProfile.id.in_(
@@ -96,6 +102,35 @@ class ProviderRepository:
             .unique()
         )
         return rows, total
+
+    @staticmethod
+    def _matches(query: str) -> ColumnElement[bool]:
+        """Match a name, a headline, or a trade — in any of the three languages.
+
+        Somebody types "plombier", "سباك" or a person's name into one box and
+        expects the same box to understand all three. `%` and `_` are escaped
+        so a stray underscore in a search term does not quietly become a
+        wildcard.
+        """
+        needle = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{needle}%"
+
+        trade_match = select(provider_trades.c.provider_id).join(
+            Trade, Trade.id == provider_trades.c.trade_id
+        ).where(
+            or_(
+                Trade.name_ar.like(pattern, escape="\\"),
+                Trade.name_fr.like(pattern, escape="\\"),
+                Trade.name_en.like(pattern, escape="\\"),
+                Trade.slug.like(pattern, escape="\\"),
+            )
+        )
+
+        return or_(
+            User.full_name.like(pattern, escape="\\"),
+            ProviderProfile.headline.like(pattern, escape="\\"),
+            ProviderProfile.id.in_(trade_match),
+        )
 
     def get_card(self, provider_id: int) -> ProviderProfile | None:
         stmt = (

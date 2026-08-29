@@ -249,3 +249,101 @@ def test_browsing_needs_no_account(client, api_prefix, db):
 
     # No Authorization header anywhere in this test.
     assert client.get(f"{api_prefix}/providers").status_code == 200
+
+
+# --- search -------------------------------------------------------------------
+
+
+def test_search_matches_a_name(client, api_prefix, db):
+    casa = make_city(db, "casablanca")
+    plumber = make_trade(db, "plombier")
+    make_provider(db, phone="+212700000001", city=casa, trades=[plumber], name="Rachid Alami")
+    make_provider(db, phone="+212700000002", city=casa, trades=[plumber], name="Karim Tazi")
+    db.commit()
+
+    assert names(client.get(f"{api_prefix}/providers", params={"q": "Tazi"}).json()) == [
+        "Karim Tazi"
+    ]
+
+
+def test_search_matches_a_headline(client, api_prefix, db):
+    casa = make_city(db, "casablanca")
+    plumber = make_trade(db, "plombier")
+    make_provider(
+        db,
+        phone="+212700000001",
+        city=casa,
+        trades=[plumber],
+        name="With headline",
+        headline="Fuites, chauffe-eau, sanitaires",
+    )
+    make_provider(db, phone="+212700000002", city=casa, trades=[plumber], name="Without")
+    db.commit()
+
+    payload = client.get(f"{api_prefix}/providers", params={"q": "chauffe-eau"}).json()
+    assert names(payload) == ["With headline"]
+
+
+def test_search_matches_a_trade_in_any_of_the_three_languages(client, api_prefix, db):
+    """One box, three languages: whoever types سباك means the same as plombier."""
+    casa = make_city(db, "casablanca")
+    plumber = Trade(
+        slug="plombier", name_ar="سباك", name_fr="Plombier", name_en="Plumber", icon="droplet"
+    )
+    db.add(plumber)
+    db.flush()
+    painter = make_trade(db, "peintre")
+
+    make_provider(db, phone="+212700000001", city=casa, trades=[plumber], name="The plumber")
+    make_provider(db, phone="+212700000002", city=casa, trades=[painter], name="The painter")
+    db.commit()
+
+    for term in ("سباك", "Plombier", "plumber", "plombier"):
+        assert names(client.get(f"{api_prefix}/providers", params={"q": term}).json()) == [
+            "The plumber"
+        ], term
+
+
+def test_search_combines_with_the_city_filter(client, api_prefix, db):
+    casa = make_city(db, "casablanca")
+    meknes = make_city(db, "meknes")
+    plumber = make_trade(db, "plombier")
+
+    make_provider(db, phone="+212700000001", city=casa, trades=[plumber], name="Rachid Alami")
+    make_provider(db, phone="+212700000002", city=meknes, trades=[plumber], name="Rachid Tazi")
+    db.commit()
+
+    payload = client.get(
+        f"{api_prefix}/providers", params={"q": "Rachid", "city_id": meknes.id}
+    ).json()
+    assert names(payload) == ["Rachid Tazi"]
+
+
+def test_a_wildcard_typed_into_the_box_is_a_literal_not_a_pattern(client, api_prefix, db):
+    """`%` matching everything would be a search box that never says "nothing"."""
+    casa = make_city(db, "casablanca")
+    plumber = make_trade(db, "plombier")
+    make_provider(db, phone="+212700000001", city=casa, trades=[plumber], name="Rachid Alami")
+    db.commit()
+
+    for term in ("%", "_", "%%"):
+        payload = client.get(f"{api_prefix}/providers", params={"q": term}).json()
+        assert payload["total"] == 0, term
+
+
+def test_a_search_that_matches_nothing_says_so(client, api_prefix, db):
+    casa = make_city(db, "casablanca")
+    make_provider(db, phone="+212700000001", city=casa, trades=[make_trade(db, "plombier")])
+    db.commit()
+
+    payload = client.get(f"{api_prefix}/providers", params={"q": "astrophysicien"}).json()
+    assert payload["total"] == 0
+    assert payload["items"] == []
+
+
+def test_an_empty_search_is_not_a_filter(client, api_prefix, db):
+    casa = make_city(db, "casablanca")
+    make_provider(db, phone="+212700000001", city=casa, trades=[make_trade(db, "plombier")])
+    db.commit()
+
+    assert client.get(f"{api_prefix}/providers", params={"q": "   "}).json()["total"] == 1

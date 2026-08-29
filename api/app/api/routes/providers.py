@@ -20,6 +20,10 @@ router = APIRouter(tags=["providers"])
 @router.get("/providers", response_model=Page[ProviderCardOut])
 def list_providers(
     db: DbSession,
+    q: Annotated[
+        str | None,
+        Query(max_length=80, description="Match a name, a headline or a trade."),
+    ] = None,
     trade_id: Annotated[int | None, Query(description="Only tradesmen in this trade.")] = None,
     city_id: Annotated[int | None, Query(description="Only tradesmen in this city.")] = None,
     sort: Annotated[ProviderSort, Query()] = ProviderSort.RATING,
@@ -28,7 +32,7 @@ def list_providers(
 ) -> Page[ProviderCardOut]:
     """The grid. Public, because browsing is what convinces somebody to sign up."""
     rows, total = ProviderRepository(db).list_cards(
-        trade_id=trade_id, city_id=city_id, sort=sort, page=page, per_page=per_page
+        query=q, trade_id=trade_id, city_id=city_id, sort=sort, page=page, per_page=per_page
     )
     return Page[ProviderCardOut](
         items=[to_card(row) for row in rows], total=total, page=page, per_page=per_page

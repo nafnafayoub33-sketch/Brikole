@@ -10,8 +10,14 @@ strings. Everything a human reads is an i18n key.
 
 ## Navigation
 
-**Public** — top bar: logo · trades menu · "How it works" · language switcher ·
-*Sign in* · *Become a m3allem*.
+**Public** — top bar: logo · **search box** · *Become a m3allem* · theme · language ·
+**profile icon** · *Create account*. There is no standalone sign-in button: the
+profile icon is the one place "me" lives, and it carries sign-in when signed out
+and the account when signed in. Under it, the **trade strip** — the site's real
+navigation, scrolling sideways rather than wrapping.
+
+The search lands on P2 with the term in the URL (`/services?q=…`), so a result is
+shareable, bookmarkable and survives a reload.
 
 **Client** — top bar: *New request* (primary) · My requests · Notifications (badge) ·
 avatar menu (profile, language, sign out).
@@ -53,6 +59,11 @@ Trades & cities · Settings · Audit log.
   rating, jobs done and the starting price — the same card the home page uses.
   A permanent *Describe your job* card sits in the grid.
 - **Sorting:** best rated (default) · most jobs · cheapest to start · newest
+- **The whole state is in the URL** — term, trade, sort, page — and changing any
+  of them resets the page, because page 4 of a different search is not somewhere
+  anybody meant to be.
+- **Search matches** a tradesman's name, his headline, and his trades in all three
+  languages: whoever types `سباك` means the same as whoever types `plombier`.
 - **Actions:** filter by city · open a profile · start a request
 - **States:** loading · no tradesman in this city yet (still offer to post the
   request — it is how the marketplace fills) · error with retry
