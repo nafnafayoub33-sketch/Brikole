@@ -1,0 +1,29 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# env — never commit real keys
+.env
+.env.*
+!.env.example
+
+# uploads in dev
+api/var/
+
+# editors / os
+.DS_Store
+*.swp

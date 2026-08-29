@@ -1,0 +1,304 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Everything visual is defined once, here, and consumed as a Tailwind utility
+   (`bg-surface`, `text-fg-muted`, `rounded-md`). No component hardcodes a
+   colour, a radius, a shadow or a duration.
+
+   Light and dark are the same variable names with different values, so a
+   component never writes a `dark:` variant for colour — it asks for
+   `bg-surface` and gets the right one. Three states are covered: the system
+   preference, and an explicit choice stored on <html data-theme>.
+
+   The palette is navy: deep, confident, and used sparingly for the one action
+   that matters on each screen. Everything else is a cool neutral so the navy
+   is the only thing that pulls the eye.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* brand — navy, from ink to mist */
+  --navy-900: #061626;
+  --navy-800: #0a2540;
+  --navy-700: #103a5e;
+  --navy-600: #164b79;
+  --navy-500: #1e6096;
+  --navy-400: #3d82ba;
+  --navy-300: #7fa8cc;
+  --navy-200: #b9d3e8;
+  --navy-100: #dce9f5;
+  --navy-50: #f0f6fc;
+
+  /* surfaces */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f9fc;
+  --surface-inset: #eef3f9;
+  --surface-brand: var(--navy-800);
+
+  /* text */
+  --fg: #0b1220;
+  --fg-muted: #55677f;
+  --fg-subtle: #8496ab;
+  --fg-on-brand: #eaf2fa;
+  --fg-on-brand-muted: #a7c2dc;
+
+  /* lines */
+  --border: #e4eaf2;
+  --border-strong: #cbd6e4;
+
+  /* the one primary */
+  --primary: var(--navy-700);
+  --primary-hover: var(--navy-800);
+  --primary-fg: #ffffff;
+  --primary-soft: var(--navy-50);
+  --primary-soft-strong: var(--navy-100);
+
+  /* supporting */
+  --accent: var(--navy-500);
+  --success: #0f7a57;
+  --success-soft: #e8f6f1;
+  --warning: #a86616;
+  --warning-soft: #fdf3e6;
+  --danger: #b3261e;
+  --danger-soft: #fdecea;
+  --star: #e8a33d;
+
+  --focus: var(--navy-500);
+  --overlay: rgb(6 22 38 / 0.5);
+
+  /* depth — light and cool, never a grey smudge */
+  --shadow-sm: 0 1px 2px rgb(11 18 32 / 0.06), 0 1px 1px rgb(11 18 32 / 0.04);
+  --shadow-md: 0 4px 16px rgb(11 18 32 / 0.08);
+  --shadow-lg: 0 16px 40px rgb(11 18 32 / 0.12);
+  --shadow-brand: 0 8px 24px rgb(16 58 94 / 0.24);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #070f1c;
+    --surface: #0e1829;
+    --surface-2: #131f34;
+    --surface-inset: #1a2841;
+    --surface-brand: #0a1829;
+
+    --fg: #f1f6fb;
+    --fg-muted: #a4b6cc;
+    --fg-subtle: #75899f;
+    --fg-on-brand: #eaf2fa;
+    --fg-on-brand-muted: #a7c2dc;
+
+    --border: #1c2a42;
+    --border-strong: #2b3e5c;
+
+    --primary: #5aa0dc;
+    --primary-hover: #7bb6e8;
+    --primary-fg: #061626;
+    --primary-soft: #10243a;
+    --primary-soft-strong: #17324f;
+
+    --accent: #7fb3e8;
+    --success: #4ec49b;
+    --success-soft: #0d2119;
+    --warning: #e0a445;
+    --warning-soft: #241a09;
+    --danger: #f2837a;
+    --danger-soft: #2a1412;
+    --star: #f0b429;
+
+    --focus: #7fb3e8;
+    --overlay: rgb(0 0 0 / 0.65);
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
+    --shadow-brand: 0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #070f1c;
+  --surface: #0e1829;
+  --surface-2: #131f34;
+  --surface-inset: #1a2841;
+  --surface-brand: #0a1829;
+
+  --fg: #f1f6fb;
+  --fg-muted: #a4b6cc;
+  --fg-subtle: #75899f;
+  --fg-on-brand: #eaf2fa;
+  --fg-on-brand-muted: #a7c2dc;
+
+  --border: #1c2a42;
+  --border-strong: #2b3e5c;
+
+  --primary: #5aa0dc;
+  --primary-hover: #7bb6e8;
+  --primary-fg: #061626;
+  --primary-soft: #10243a;
+  --primary-soft-strong: #17324f;
+
+  --accent: #7fb3e8;
+  --success: #4ec49b;
+  --success-soft: #0d2119;
+  --warning: #e0a445;
+  --warning-soft: #241a09;
+  --danger: #f2837a;
+  --danger-soft: #2a1412;
+  --star: #f0b429;
+
+  --focus: #7fb3e8;
+  --overlay: rgb(0 0 0 / 0.65);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-brand: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+@theme inline {
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-navy-500: var(--navy-500);
+  --color-navy-400: var(--navy-400);
+  --color-navy-300: var(--navy-300);
+  --color-navy-200: var(--navy-200);
+  --color-navy-100: var(--navy-100);
+  --color-navy-50: var(--navy-50);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-brand: var(--surface-brand);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-on-brand: var(--fg-on-brand);
+  --color-fg-on-brand-muted: var(--fg-on-brand-muted);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-strong: var(--primary-soft-strong);
+
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-star: var(--star);
+
+  --color-focus: var(--focus);
+  --color-overlay: var(--overlay);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-brand: var(--shadow-brand);
+}
+
+@theme {
+  --font-sans:
+    'Noto Sans Arabic', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-numeric: 'Inter', system-ui, sans-serif;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-pill: 9999px;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --spacing-tap: 2.75rem;
+  --spacing-tap-pro: 3.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    background-color: var(--bg);
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Headings carry the confidence in this design: tight, dark, and heavy. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .numeric {
+    font-family: var(--font-numeric);
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* The soft navy field the auth pages and the hero sit on. */
+  .brand-panel {
+    background:
+      radial-gradient(120% 90% at 85% 10%, rgb(30 96 150 / 0.55), transparent 60%),
+      radial-gradient(90% 80% at 10% 95%, rgb(16 58 94 / 0.65), transparent 55%),
+      var(--surface-brand);
+  }
+
+  .brand-grid {
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+}
