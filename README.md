@@ -6,8 +6,8 @@ priced offers, the client picks one and pays him directly in cash.
 
 Four roles: **client**, **m3allem** (tradesman), **moderator** (disputes), **admin**.
 
-> This folder is a project of its own. It is unrelated to the Lavage car-wash app in
-> the repository root and shares no code, build or database with it.
+> Brikole is a project of its own. Where it sits beside the Lavage car-wash app, the
+> two are unrelated and share no code, build or database.
 
 Read [`CLAUDE.md`](CLAUDE.md) before writing code. The specs are in
 [`docs/SCREENS.md`](docs/SCREENS.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

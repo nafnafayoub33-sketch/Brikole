@@ -1,11 +1,11 @@
 # CLAUDE.md — Brikole
 
-Project rules for the `brikole/` folder. Read this before writing any code here.
+Project rules for Brikole. Read this before writing any code here.
 
-> **This folder is a separate project.** It shares nothing with the Lavage car-wash
-> app that lives in the repository root — not a dependency, not a build, not a
-> database, not a line of code. Never import across the boundary in either
-> direction, and never edit anything outside `brikole/`.
+> **Brikole is a separate project.** Where it sits beside the Lavage car-wash app,
+> it shares nothing with it — not a dependency, not a build, not a database, not a
+> line of code. Never import across that boundary in either direction, and never
+> edit anything outside Brikole's own tree.
 
 ## What this is
 
@@ -106,7 +106,7 @@ SQLAlchemy 2 + Alembic + MySQL 8.
 
 - Do not add a UI component library. `web/src/ui` is the design system.
 - Do not add a state manager beyond TanStack Query + Zustand.
-- Do not touch anything outside `brikole/`.
+- Do not touch anything outside Brikole's own tree.
 - Do not commit secrets. Everything goes through `.env`, and `.env.example` is the
   template.
 - Do not scaffold screens that aren't in `docs/SCREENS.md` without asking.
