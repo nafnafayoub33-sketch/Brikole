@@ -144,12 +144,14 @@ export function PhotoGallery({
   value,
   onChange,
   max,
+  purpose = 'portfolio',
 }: {
   label: string
   hint?: string
   value: PickedPhoto[]
   onChange: (photos: PickedPhoto[]) => void
   max: number
+  purpose?: UploadPurpose
 }) {
   const { t } = useTranslation()
 
@@ -183,7 +185,7 @@ export function PhotoGallery({
           <li className="w-full max-w-56">
             <PhotoInput
               label=""
-              purpose="portfolio"
+              purpose={purpose}
               value={null}
               onChange={(photo) => photo && onChange([...value, photo])}
             />

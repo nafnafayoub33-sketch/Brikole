@@ -12,6 +12,7 @@ from app.core.enums import OfferStatus
 from app.models.base import Base, PkMixin, TimestampMixin, enum_column
 
 if TYPE_CHECKING:
+    from app.models.provider import ProviderProfile
     from app.models.request import ServiceRequest
 
 
@@ -49,6 +50,9 @@ class Offer(PkMixin, TimestampMixin, Base):
     lead_fee_centimes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     request: Mapped[ServiceRequest] = relationship(back_populates="offers")
+    #: One way on purpose: an offer needs the tradesman who wrote it, and a
+    #: tradesman never wants every offer he has ever sent loaded with him.
+    provider: Mapped[ProviderProfile] = relationship()
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Offer {self.id} req={self.request_id} {self.status}>"

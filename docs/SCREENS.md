@@ -124,13 +124,25 @@ Trades & cities · Settings · Audit log.
 ### C3 · Request and its offers — `/client/requests/:id` ⭐
 - **Contents:** the request as published; below it the offers, each with the
   tradesman's photo, name, rating, jobs done, **price**, message, and when he can
-  come. Sortable by price, rating, soonest.
+  come. Sortable by price, rating, soonest — sorted on the page, not by a round
+  trip, because it is a decision he changes three times in a row.
+- **Every offer is listed, including the withdrawn and the rejected.** C2 shouts
+  an offer count; a list that quietly drops some of them makes that number a lie,
+  and a closed request is also the record of who answered and who he did not pick.
+- **The address is on the page but the note under it says who else sees it** —
+  only the tradesman whose offer he accepts. Nothing on a screen should leave him
+  guessing what he has just published.
 - **Actions:** accept an offer (confirms, and says plainly that the others will be
-  declined) · decline one · cancel the request · edit while no offer has arrived
+  declined) · decline one · cancel the request (confirms) · edit while no offer
+  has arrived
 - **States:** loading · no offer yet ("Tradesmen are being notified — offers usually
   arrive within a few hours") · request cancelled · request already assigned
   (offers become read-only) · accept failed because someone else's offer was
   withdrawn
+- **Not built yet: accepting.** Reading the offers works; the accept button does
+  not exist, and the screen says so rather than showing a button that does
+  nothing. Acceptance is the transaction that charges the lead fee and creates the
+  job, so it lands with C4 — see the note under C4.
 - → C4
 
 ### C4 · Job — `/client/jobs/:id`
@@ -141,6 +153,12 @@ Trades & cities · Settings · Audit log.
   dispute
 - **States:** each timeline state · cancelled by the tradesman (with his reason) ·
   awaiting your confirmation (the primary action) · auto-confirmed after 7 days
+- **Accepting an offer belongs here, not at C3.** It is one transaction: the offer
+  becomes accepted, the others rejected, the request assigned, a job created, and
+  the lead fee charged to the tradesman's balance with its ledger row. It also
+  needs an answer to a question the spec has not settled — what happens when the
+  accepted tradesman's balance no longer covers the fee — so it is built with this
+  screen rather than bolted onto C3.
 - → C5, C8
 
 ### C5 · Rate — `/client/jobs/:id/review`

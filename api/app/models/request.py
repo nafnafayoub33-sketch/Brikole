@@ -12,6 +12,7 @@ from app.core.enums import RequestStatus, Urgency
 from app.models.base import Base, PkMixin, TimestampMixin, enum_column
 
 if TYPE_CHECKING:
+    from app.models.catalog import City, Trade
     from app.models.offer import Offer
 
 
@@ -58,6 +59,9 @@ class ServiceRequest(PkMixin, TimestampMixin, Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    trade: Mapped[Trade] = relationship()
+    city: Mapped[City] = relationship()
 
     photos: Mapped[list[RequestPhoto]] = relationship(
         back_populates="request", cascade="all, delete-orphan", order_by="RequestPhoto.sort_order"

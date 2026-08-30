@@ -27,6 +27,17 @@ class UploadPurpose(StrEnum):
     AVATAR = "avatar"
     ID_CARD = "id_card"
     PORTFOLIO = "portfolio"
+    REQUEST_PHOTO = "request_photo"
+
+
+#: Who may upload what. Stated as a table rather than as a chain of `if`s,
+#: because the next purpose added is the one somebody forgets to guard.
+ALLOWED_ROLES: dict[UploadPurpose, frozenset[Role] | None] = {
+    UploadPurpose.AVATAR: None,  # anybody with an account
+    UploadPurpose.ID_CARD: frozenset({Role.PROVIDER}),
+    UploadPurpose.PORTFOLIO: frozenset({Role.PROVIDER}),
+    UploadPurpose.REQUEST_PHOTO: frozenset({Role.CLIENT}),
+}
 
 
 class UploadOut(ApiModel):
@@ -44,7 +55,8 @@ async def upload(
     purpose: Annotated[UploadPurpose, Form()],
     file: Annotated[UploadFile, File()],
 ) -> UploadOut:
-    if purpose is not UploadPurpose.AVATAR and user.role is not Role.PROVIDER:
+    allowed = ALLOWED_ROLES[purpose]
+    if allowed is not None and user.role not in allowed:
         raise DomainError(ErrorCode.FORBIDDEN, purpose=purpose.value)
 
     # Read one byte past the limit rather than the whole thing: a 2 GB upload
@@ -60,6 +72,7 @@ async def upload(
         UploadPurpose.AVATAR: "avatars",
         UploadPurpose.ID_CARD: "id-cards",
         UploadPurpose.PORTFOLIO: "portfolio",
+        UploadPurpose.REQUEST_PHOTO: "requests",
     }[purpose]
 
     path = storage.save(data, bucket=bucket, folder=f"{folder}/{user.id}")

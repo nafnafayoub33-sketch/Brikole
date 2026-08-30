@@ -31,7 +31,7 @@ from app.core.enums import (
     Urgency,
 )
 from app.core.money import dirhams
-from app.core.policy import FREE_LEADS_NEW_PROVIDER
+from app.core.policy import FREE_LEADS_NEW_PROVIDER, REQUEST_EXPIRY_DAYS
 from app.core.security import hash_password
 from app.db import session_scope
 from app.models.base import utcnow
@@ -39,8 +39,8 @@ from app.models.catalog import City, Trade
 from app.models.credit import CreditAccount
 from app.models.job import Job, Review
 from app.models.offer import Offer
-from app.models.provider import ProviderProfile
-from app.models.request import ServiceRequest
+from app.models.provider import ProviderProfile, provider_trades
+from app.models.request import RequestPhoto, ServiceRequest
 from app.models.user import User
 
 DEMO_PASSWORD = "demo1234"
@@ -493,7 +493,7 @@ def seed_history(db: Session, *, rng: random.Random) -> tuple[int, int]:
                 address="—",
                 urgency=rng.choice(list(Urgency)),
                 status=RequestStatus.DONE,
-                offers_count=rng.randint(1, 5),
+                offers_count=0,  # set below, from the offers actually written
                 created_at=done_at - timedelta(days=rng.randint(1, 6)),
             )
             db.add(request)
@@ -510,6 +510,30 @@ def seed_history(db: Session, *, rng: random.Random) -> tuple[int, int]:
                 created_at=request.created_at,
             )
             db.add(offer)
+            db.flush()
+
+            # The ones he did not pick. They exist: C3 lists every offer a
+            # request drew, and `offers_count` is what C2 shouts — a count
+            # invented above a single row is the same lie as a rating with no
+            # reviews behind it.
+            losers = [
+                other
+                for other in rng.sample(providers, min(len(providers), 8))
+                if other.id != profile.id and other.city_id == profile.city_id
+            ][: rng.randint(0, 3)]
+            for loser in losers:
+                db.add(
+                    Offer(
+                        request_id=request.id,
+                        provider_id=loser.id,
+                        price_centimes=int(agreed * rng.uniform(0.8, 1.4)),
+                        message="",
+                        status=OfferStatus.REJECTED,
+                        responded_at=done_at,
+                        created_at=request.created_at + timedelta(hours=rng.randint(1, 20)),
+                    )
+                )
+            request.offers_count = 1 + len(losers)
             db.flush()
 
             job = Job(
@@ -622,6 +646,257 @@ def _document_png(width: int = 480, height: int = 300) -> bytes:
     )
 
 
+def _photo_png(tint: tuple[int, int, int], width: int = 640, height: int = 480) -> bytes:
+    """A stand-in photograph of the problem, for C3's gallery.
+
+    Shaped like a room — a wall, a floor line, an object standing on it, and
+    enough grain that it reads as a photograph rather than a swatch. A flat
+    rectangle in a photo slot looks like an image that failed to load, which is
+    the one thing a placeholder must not look like.
+    """
+    import struct
+    import zlib
+
+    red, green, blue = tint
+    floor = int(height * 0.68)
+    grain = random.Random(sum(tint))
+
+    def pixel(x: int, y: int) -> tuple[int, int, int]:
+        if y < floor:
+            shade = 1.05 - (y / floor) * 0.3  # light falling down the wall
+        else:
+            shade = 0.55 - ((y - floor) / (height - floor)) * 0.12  # darker floor
+
+        # Something standing against the wall, casting the eye somewhere.
+        if floor - height // 3 < y < floor and width // 3 < x < width // 3 + width // 5:
+            shade *= 0.6
+
+        # A vignette, then grain: both are what a phone photo actually has.
+        dx = (x - width / 2) / (width / 2)
+        dy = (y - height / 2) / (height / 2)
+        shade *= 1 - 0.18 * (dx * dx + dy * dy)
+        shade += grain.uniform(-0.02, 0.02)
+
+        return (
+            max(0, min(255, int(red * shade))),
+            max(0, min(255, int(green * shade))),
+            max(0, min(255, int(blue * shade))),
+        )
+
+    raw = b"".join(
+        b"\x00" + b"".join(bytes(pixel(x, y)) for x in range(width)) for y in range(height)
+    )
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        body = tag + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    return (
+        b"\x89PNG\r\n\x1a\x0a"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 6))
+        + chunk(b"IEND", b"")
+    )
+
+
+OFFER_MESSAGES = [
+    "Je peux passer demain matin, le déplacement est compris dans le prix.",
+    "غادي نجي نشوف المشكل قبل، ومن بعد نعطيك الثمن النهائي.",
+    "Prix ferme, matériel inclus. Je travaille aussi le dimanche.",
+    "J'ai fait le même travail dans votre quartier la semaine dernière.",
+    "الخدمة كتاخد نهار واحد، والضمانة 6 شهور.",
+]
+
+#: The client whose screens the demo shows. The first seeded client, so the
+#: same account every time.
+DEMO_CLIENT_INDEX = 0
+
+
+def backfill_offer_counts(db: Session) -> int:
+    """Make `offers_count` equal the offers that actually exist.
+
+    Earlier seeds invented the number above a single offer row. C3 lists every
+    offer a request drew, so the two are now read side by side and any gap
+    between them is visible on screen.
+    """
+    counts = select(Offer.request_id, func.count().label("n")).group_by(Offer.request_id).subquery()
+    real: dict[int, int] = {
+        int(request_id): int(number)
+        for request_id, number in db.execute(select(counts.c.request_id, counts.c.n))
+    }
+
+    fixed = 0
+    for request in db.execute(select(ServiceRequest)).scalars():
+        expected = real.get(request.id, 0)
+        if request.offers_count != expected:
+            request.offers_count = expected
+            fixed += 1
+
+    db.flush()
+    return fixed
+
+
+def seed_live_requests(db: Session, *, rng: random.Random) -> int:
+    """Give one demo client requests that are still alive.
+
+    `seed_history` only writes finished work, which leaves C2 and C3 with
+    nothing but grey rows: no open request, no offer anyone can still choose
+    between, and no way to see the screens do their job.
+    """
+    from app.config import get_settings
+    from app.services.storage import Bucket, LocalDiskStorage
+
+    clients = list(
+        db.execute(
+            select(User).where(User.phone.like(f"{DEMO_CLIENT_PREFIX}%")).order_by(User.phone)
+        ).scalars()
+    )
+    if not clients:
+        return 0
+    client = clients[DEMO_CLIENT_INDEX]
+
+    # Already done? Leave it alone rather than pushing him over the open cap.
+    already = db.execute(
+        select(func.count())
+        .select_from(ServiceRequest)
+        .where(
+            ServiceRequest.client_id == client.id,
+            ServiceRequest.status.in_([RequestStatus.OPEN, RequestStatus.CANCELLED]),
+        )
+    ).scalar_one()
+    if already:
+        return 0
+
+    # A request is answered by tradesmen in its own city — so put him where the
+    # tradesmen are, rather than posting into an empty one.
+    city_id, _ = db.execute(
+        select(ProviderProfile.city_id, func.count())
+        .where(ProviderProfile.status == ProviderStatus.APPROVED)
+        .group_by(ProviderProfile.city_id)
+        .order_by(func.count().desc())
+        .limit(1)
+    ).one()
+    city = db.get(City, city_id)
+    if city is None:
+        return 0
+    client.city_id = city.id
+
+    def providers_for(trade: Trade, limit: int) -> list[ProviderProfile]:
+        return list(
+            db.execute(
+                select(ProviderProfile)
+                .join(provider_trades, provider_trades.c.provider_id == ProviderProfile.id)
+                .where(
+                    ProviderProfile.city_id == city.id,
+                    ProviderProfile.status == ProviderStatus.APPROVED,
+                    provider_trades.c.trade_id == trade.id,
+                )
+                .order_by(ProviderProfile.rating_avg.desc())
+                .limit(limit)
+            )
+            .scalars()
+            .unique()
+        )
+
+    trades = list(db.execute(select(Trade).where(Trade.is_active.is_(True))).scalars())
+    busy = next((t for t in trades if providers_for(t, 3)), None)
+    if busy is None:
+        return 0
+    quiet = next((t for t in trades if t.id != busy.id), busy)
+
+    storage = LocalDiskStorage(get_settings().upload_dir)
+    now = utcnow()
+    made = 0
+
+    # 1. The one the screens are for: open, and three tradesmen have answered.
+    answered = ServiceRequest(
+        client_id=client.id,
+        trade_id=busy.id,
+        city_id=city.id,
+        title=JOB_TITLES.get(busy.slug, ["Petit travail"])[0],
+        description=(
+            "L'eau coule sous l'évier depuis deux jours et ça a commencé à "
+            "abîmer le meuble. J'ai fermé le robinet d'arrêt en attendant. "
+            "Le logement est au 3e étage, sans ascenseur."
+        ),
+        address="14 rue Ibn Sina, appartement 8",
+        urgency=Urgency.THIS_WEEK,
+        status=RequestStatus.OPEN,
+        budget_min_centimes=dirhams(200),
+        budget_max_centimes=dirhams(600),
+        offers_count=0,
+        expires_at=now + timedelta(days=REQUEST_EXPIRY_DAYS),
+        created_at=now - timedelta(days=2),
+    )
+    db.add(answered)
+    db.flush()
+
+    for order, tint in enumerate([(168, 152, 132), (132, 148, 168)]):
+        path = storage.save(
+            _photo_png(tint), bucket=Bucket.PUBLIC, folder=f"requests/{answered.id}"
+        )
+        db.add(
+            RequestPhoto(request_id=answered.id, url=f"/api/v1/uploads/{path}", sort_order=order)
+        )
+
+    candidates = providers_for(busy, 3)
+    for index, provider in enumerate(candidates):
+        db.add(
+            Offer(
+                request_id=answered.id,
+                provider_id=provider.id,
+                price_centimes=dirhams(rng.choice([250, 320, 400, 480])),
+                message=rng.choice(OFFER_MESSAGES),
+                available_from=now + timedelta(days=index + 1),
+                status=OfferStatus.PENDING,
+                created_at=answered.created_at + timedelta(hours=3 * index + 2),
+            )
+        )
+    answered.offers_count = len(candidates)
+    made += 1
+
+    # 2. Open, and nobody has answered yet — the state C3 has to be honest about.
+    waiting = ServiceRequest(
+        client_id=client.id,
+        trade_id=quiet.id,
+        city_id=city.id,
+        title=JOB_TITLES.get(quiet.slug, ["Petit travail"])[0],
+        description=(
+            "بغيت واحد يجي يشوف الخدمة ويعطيني الثمن. الدار فوسط المدينة "
+            "والخدمة ماشي كبيرة، غير خاصها شي حد يعرف."
+        ),
+        address="Résidence Al Firdaous, bloc C",
+        urgency=Urgency.TODAY,
+        status=RequestStatus.OPEN,
+        offers_count=0,
+        expires_at=now + timedelta(days=REQUEST_EXPIRY_DAYS),
+        created_at=now - timedelta(hours=4),
+    )
+    db.add(waiting)
+    made += 1
+
+    # 3. One he changed his mind about, so the closed group is not empty either.
+    dropped = ServiceRequest(
+        client_id=client.id,
+        trade_id=busy.id,
+        city_id=city.id,
+        title=JOB_TITLES.get(busy.slug, ["Petit travail"])[-1],
+        description="Finalement un voisin s'en est occupé, je n'ai plus besoin.",
+        address="14 rue Ibn Sina, appartement 8",
+        urgency=Urgency.FLEXIBLE,
+        status=RequestStatus.CANCELLED,
+        offers_count=0,
+        cancelled_at=now - timedelta(days=9),
+        cancel_reason="Réglé autrement",
+        created_at=now - timedelta(days=11),
+    )
+    db.add(dropped)
+    made += 1
+
+    db.flush()
+    return made
+
+
 def seed_pending_applications(db: Session, *, total: int, rng: random.Random) -> int:
     """Applications waiting for an admin.
 
@@ -704,10 +979,13 @@ def main() -> int:
         jobs, reviews = seed_history(db, rng=rng)
         bios = backfill_bios(db, rng=rng)
         comments = refresh_comments(db, rng=rng)
+        live = seed_live_requests(db, rng=rng)
+        fixed = backfill_offer_counts(db)
         waiting = seed_pending_applications(db, total=6, rng=rng)
 
     print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
     print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
+    print(f"live requests for the demo client: {live}, offer counts fixed: {fixed}")
     print(f"applications waiting for an admin: {waiting}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0

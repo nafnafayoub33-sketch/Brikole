@@ -9,6 +9,9 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
+import { NewRequestPage } from '@/features/client/NewRequestPage'
+import { RequestPage } from '@/features/client/RequestPage'
+import { RequestsPage } from '@/features/client/RequestsPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
@@ -51,9 +54,9 @@ export function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="requests" replace />} />
-        <Route path="requests" element={<NotBuilt screen="C2" />} />
-        <Route path="requests/new" element={<NotBuilt screen="C1" />} />
-        <Route path="requests/:id" element={<NotBuilt screen="C3" />} />
+        <Route path="requests" element={<RequestsPage />} />
+        <Route path="requests/new" element={<NewRequestPage />} />
+        <Route path="requests/:id" element={<RequestPage />} />
         <Route path="jobs/:id" element={<NotBuilt screen="C4" />} />
         <Route path="jobs/:id/review" element={<NotBuilt screen="C5" />} />
         <Route path="jobs/:id/dispute" element={<NotBuilt screen="C8" />} />
