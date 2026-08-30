@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { useAcceptOffer } from '@/data/jobs'
 import {
   useCancelRequest,
   useMyRequest,
@@ -18,6 +19,7 @@ import { Alert } from '@/ui/Alert'
 import { Badge } from '@/ui/Badge'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
+import { ConfirmButton } from '@/ui/ConfirmButton'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { Skeleton } from '@/ui/Skeleton'
@@ -142,6 +144,7 @@ export function RequestPage() {
             query={offers}
             language={language}
             sort={sort}
+            requestId={requestId}
             readOnly={data.status !== 'open'}
           />
         </div>
@@ -316,11 +319,13 @@ function Offers({
   query,
   language,
   sort,
+  requestId,
   readOnly,
 }: {
   query: ReturnType<typeof useRequestOffers>
   language: Language
   sort: Sort
+  requestId: number
   readOnly: boolean
 }) {
   const { t } = useTranslation()
@@ -359,26 +364,35 @@ function Offers({
   }
 
   return (
-    <>
-      {!readOnly && (
-        <Alert tone="info" className="mb-5">
-          <span className="font-semibold">{t('requests.acceptSoonTitle')}</span>{' '}
-          {t('requests.acceptSoonBody')}
-        </Alert>
-      )}
-      <ul className="flex flex-col gap-4">
-        {sorted.map((offer) => (
-          <li key={offer.id}>
-            <OfferCard offer={offer} language={language} />
-          </li>
-        ))}
-      </ul>
-    </>
+    <ul className="flex flex-col gap-4">
+      {sorted.map((offer) => (
+        <li key={offer.id}>
+          <OfferCard
+            offer={offer}
+            language={language}
+            requestId={requestId}
+            readOnly={readOnly}
+          />
+        </li>
+      ))}
+    </ul>
   )
 }
 
-function OfferCard({ offer, language }: { offer: Offer; language: Language }) {
+function OfferCard({
+  offer,
+  language,
+  requestId,
+  readOnly,
+}: {
+  offer: Offer
+  language: Language
+  requestId: number
+  readOnly: boolean
+}) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const accept = useAcceptOffer()
   const provider = offer.provider
 
   return (
@@ -455,6 +469,42 @@ function OfferCard({ offer, language }: { offer: Offer; language: Language }) {
           </Link>
         </div>
       </div>
+
+      {offer.status === 'accepted' && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <span className="text-sm font-semibold text-success">{t('requests.accepted')}</span>
+          <Link
+            to="/client/jobs"
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            {t('requests.goToJob')}
+          </Link>
+        </div>
+      )}
+
+      {!readOnly && offer.status === 'pending' && (
+        <div className="mt-4 border-t border-border pt-4">
+          {/* The one irreversible press in the client's flow, so it says out
+              loud what it does to the offers he is not choosing. */}
+          <ConfirmButton
+            label={t('requests.accept')}
+            question={t('requests.acceptConfirm')}
+            confirmLabel={t('requests.acceptYes')}
+            loading={accept.isPending}
+            onConfirm={() =>
+              accept.mutate(
+                { requestId, offerId: offer.id },
+                { onSuccess: (job) => navigate(`/client/jobs/${job.id}`) },
+              )
+            }
+          />
+          {accept.isError && (
+            <div className="mt-3">
+              <ErrorState error={accept.error} />
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   )
 }

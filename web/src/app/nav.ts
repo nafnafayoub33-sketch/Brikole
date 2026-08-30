@@ -5,6 +5,7 @@ import type { NavItem } from '@/app/layouts/AppLayout'
 export const CLIENT_NAV: NavItem[] = [
   { to: '/client/requests/new', labelKey: 'nav.newRequest' },
   { to: '/client/requests', labelKey: 'nav.myRequests', end: true },
+  { to: '/client/jobs', labelKey: 'nav.myJobsNav', end: true },
   { to: '/client/notifications', labelKey: 'nav.notifications' },
   { to: '/client/account', labelKey: 'nav.account' },
 ]

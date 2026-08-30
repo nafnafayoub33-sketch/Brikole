@@ -280,6 +280,36 @@ JOB_TITLES = {
     "antenne": ["Parabole à régler", "Antenne à poser", "ضبط البارابول"],
 }
 
+#: What a request actually says. Short, specific, and in whichever language
+#: the person thinks in — M7 shows these to the tradesman on his phone, and a
+#: row of blanks there is what makes a seeded database look broken.
+JOB_DESCRIPTIONS = [
+    "L'eau coule depuis deux jours et ça commence à abîmer le meuble."
+    " J'ai fermé le robinet d'arrêt en attendant.",
+    "Le logement est au 3e étage, sans ascenseur."
+    " Il faut prévoir le matériel, je n'ai rien sur place.",
+    "الخدمة ماشي كبيرة، غير خاصها شي حد يعرف. الدار فوسط المدينة.",
+    "C'est urgent, j'ai des invités ce week-end. Je suis disponible toute la journée.",
+    "بغيت واحد يجي يشوف قبل ويعطيني الثمن النهائي. عندي الوقت، ماشي مستعجل.",
+    "Ça fait deux fois que quelqu'un passe sans régler le problème."
+    " J'aimerais quelqu'un d'expérimenté.",
+    "L'appartement est vide, je peux vous donner accès quand vous voulez en semaine.",
+    "خدمة صغيرة ولكن خاصها تتدار مزيان. كنخدم النهار، نقدر نتلاقى معاك العشية.",
+]
+
+#: Streets that exist in Moroccan cities, so an address reads as an address.
+STREETS = [
+    "12 rue Al Massira, Maârif",
+    "45 avenue Hassan II",
+    "8 rue Ibn Battouta, appartement 3",
+    "Résidence Al Firdaous, bloc C, 2e étage",
+    "23 rue de Fès, près de la pharmacie",
+    "Lotissement Riad Salam, villa 14",
+    "67 boulevard Zerktouni, 5e étage",
+    "Rue Oued Ziz, immeuble 9, appartement 12",
+]
+
+
 #: What people actually write. Short, specific, and in whichever language they
 #: think in — which is the mix the page has to lay out without breaking.
 GOOD_COMMENTS = [
@@ -489,8 +519,8 @@ def seed_history(db: Session, *, rng: random.Random) -> tuple[int, int]:
                 trade_id=trade.id,
                 city_id=profile.city_id,
                 title=rng.choice(JOB_TITLES.get(trade.slug, ["Petit travail"])),
-                description="",
-                address="—",
+                description=rng.choice(JOB_DESCRIPTIONS),
+                address=rng.choice(STREETS),
                 urgency=rng.choice(list(Urgency)),
                 status=RequestStatus.DONE,
                 offers_count=0,  # set below, from the offers actually written
@@ -710,6 +740,27 @@ OFFER_MESSAGES = [
 #: The client whose screens the demo shows. The first seeded client, so the
 #: same account every time.
 DEMO_CLIENT_INDEX = 0
+
+
+def backfill_request_details(db: Session, *, rng: random.Random) -> int:
+    """Give the seeded history a description and an address.
+
+    Both were left blank while nothing displayed them. M7 shows the tradesman
+    the address he is driving to and the description he is quoting on, so a
+    dash and an empty paragraph now read as a broken screen rather than as
+    absent demo data.
+    """
+    fixed = 0
+    for request in db.execute(select(ServiceRequest)).scalars():
+        if not request.description.strip():
+            request.description = rng.choice(JOB_DESCRIPTIONS)
+            fixed += 1
+        if request.address.strip() in ("", "—"):
+            request.address = rng.choice(STREETS)
+            fixed += 1
+
+    db.flush()
+    return fixed
 
 
 def backfill_offer_counts(db: Session) -> int:
@@ -981,11 +1032,13 @@ def main() -> int:
         comments = refresh_comments(db, rng=rng)
         live = seed_live_requests(db, rng=rng)
         fixed = backfill_offer_counts(db)
+        details = backfill_request_details(db, rng=rng)
         waiting = seed_pending_applications(db, total=6, rng=rng)
 
     print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
     print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
     print(f"live requests for the demo client: {live}, offer counts fixed: {fixed}")
+    print(f"request descriptions and addresses filled in: {details}")
     print(f"applications waiting for an admin: {waiting}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0

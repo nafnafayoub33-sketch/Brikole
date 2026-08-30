@@ -10,6 +10,7 @@ from app.api.routes import (
     auth,
     catalog,
     health,
+    jobs,
     pro,
     providers,
     requests,
@@ -24,5 +25,6 @@ api_router.include_router(providers.router)
 api_router.include_router(uploads.router)
 api_router.include_router(pro.router)
 api_router.include_router(requests.router)
+api_router.include_router(jobs.router)
 api_router.include_router(admin.router)
 api_router.include_router(approvals.router)

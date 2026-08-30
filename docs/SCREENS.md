@@ -139,10 +139,12 @@ Trades & cities · Settings · Audit log.
   arrive within a few hours") · request cancelled · request already assigned
   (offers become read-only) · accept failed because someone else's offer was
   withdrawn
-- **Not built yet: accepting.** Reading the offers works; the accept button does
-  not exist, and the screen says so rather than showing a button that does
-  nothing. Acceptance is the transaction that charges the lead fee and creates the
-  job, so it lands with C4 — see the note under C4.
+- **Accepting is one transaction.** The offer becomes accepted, every other
+  pending offer on the request is declined in the same breath, the request goes
+  to `assigned`, the job is created, and the lead fee is charged to the
+  tradesman with its ledger row — or none of it happened. The button says out
+  loud what it does to the offers he is not choosing, because it is the one
+  press in the client's flow he cannot take back.
 - → C4
 
 ### C4 · Job — `/client/jobs/:id`
@@ -153,16 +155,28 @@ Trades & cities · Settings · Audit log.
   dispute
 - **States:** each timeline state · cancelled by the tradesman (with his reason) ·
   awaiting your confirmation (the primary action) · auto-confirmed after 7 days
-- **Accepting an offer belongs here, not at C3.** It is one transaction: the offer
-  becomes accepted, the others rejected, the request assigned, a job created, and
-  the lead fee charged to the tradesman's balance with its ledger row. It also
-  needs an answer to a question the spec has not settled — what happens when the
-  accepted tradesman's balance no longer covers the fee — so it is built with this
-  screen rather than bolted onto C3.
+- **A short balance never blocks the client.** If the accepted tradesman cannot
+  cover the lead fee, the balance is allowed to go negative and the debt is
+  recorded: the client pressed the button, he cannot see or fix the tradesman's
+  wallet, and refusing there would break the only flow that earns the platform
+  anything. The guard belongs upstream — M5 refuses to send an offer without
+  credit — so a shortfall here is the narrow case where the fee changed, or the
+  balance was spent, between the offer and its acceptance.
+- **The tradesman's phone number appears here and nowhere earlier.** Before an
+  offer is accepted nobody has agreed to anything.
+- **Who may move it where is not symmetric.** The tradesman starts and finishes;
+  the client confirms. Neither owns the other's arrow, and a client cannot cancel
+  once the work is done — that is what C8 is for.
 - → C5, C8
 
 ### C5 · Rate — `/client/jobs/:id/review`
 - **Contents:** 1–5 stars, optional comment, optional photos of the result
+- **One question and one optional box.** Every field added here costs reviews,
+  and a marketplace with no reviews is a directory. Photos of the result are not
+  built for that reason — they can be added once the ratings are arriving.
+- **The rating recomputes the profile it is about**, from the reviews, never by
+  incrementing an average: that is how a profile ends up claiming 4.9 over a page
+  of three-star reviews.
 - **Actions:** publish · skip
 - **States:** already rated (read-only) · submitting · failed with retry
 - → C2
@@ -257,10 +271,15 @@ with wet or dirty hands. Minimum touch target 52px.
 ### M7 · My jobs — `/pro/jobs`
 - **Contents:** assigned / in progress / finished, each with the client's name,
   **phone**, address, agreed price
+- **Full cards, not a list that opens a detail.** He is standing outside with one
+  hand free: the address and the phone number are the two things he must not have
+  to tap twice for. Buttons are 52px for the same reason.
 - **Actions:** *Start* → in progress · *Finished* → done · cancel with a mandatory
-  reason
+  reason — the button refuses a blank one before the API does, so he is not told
+  off after pressing.
 - **Note:** cancellation rate is tracked. It is shown to him honestly on this screen
   before it ever becomes a suspension.
+- **He is shown what the lead cost him** on each job, or that it was a free one.
 
 ### M8 · My profile — `/pro/profile`
 - Trades, city, radius, bio, portfolio, availability. Editing trades or city takes

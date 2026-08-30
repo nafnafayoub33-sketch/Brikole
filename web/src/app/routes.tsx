@@ -9,10 +9,14 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
+import { JobPage } from '@/features/client/JobPage'
+import { JobsPage } from '@/features/client/JobsPage'
 import { NewRequestPage } from '@/features/client/NewRequestPage'
 import { RequestPage } from '@/features/client/RequestPage'
 import { RequestsPage } from '@/features/client/RequestsPage'
+import { ReviewPage } from '@/features/client/ReviewPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
+import { ProJobsPage } from '@/features/pro/JobsPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
 import { LandingPage } from '@/features/public/LandingPage'
@@ -57,8 +61,9 @@ export function AppRoutes() {
         <Route path="requests" element={<RequestsPage />} />
         <Route path="requests/new" element={<NewRequestPage />} />
         <Route path="requests/:id" element={<RequestPage />} />
-        <Route path="jobs/:id" element={<NotBuilt screen="C4" />} />
-        <Route path="jobs/:id/review" element={<NotBuilt screen="C5" />} />
+        <Route path="jobs" element={<JobsPage />} />
+        <Route path="jobs/:id" element={<JobPage />} />
+        <Route path="jobs/:id/review" element={<ReviewPage />} />
         <Route path="jobs/:id/dispute" element={<NotBuilt screen="C8" />} />
         <Route path="notifications" element={<NotBuilt screen="C6" />} />
         <Route path="account" element={<NotBuilt screen="C7" />} />
@@ -78,7 +83,7 @@ export function AppRoutes() {
         <Route path="requests" element={<NotBuilt screen="M4" />} />
         <Route path="requests/:id" element={<NotBuilt screen="M5" />} />
         <Route path="offers" element={<NotBuilt screen="M6" />} />
-        <Route path="jobs" element={<NotBuilt screen="M7" />} />
+        <Route path="jobs" element={<ProJobsPage />} />
         <Route path="profile" element={<NotBuilt screen="M8" />} />
         <Route path="credit" element={<NotBuilt screen="M9" />} />
         <Route path="reviews" element={<NotBuilt screen="M10" />} />
