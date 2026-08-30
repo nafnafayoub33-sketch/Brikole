@@ -300,11 +300,21 @@ with wet or dirty hands. Minimum touch target 52px.
   leads sold and their value, disputes open. Every tile links to its screen.
 
 ### A2 · Approvals — `/admin/approvals` ⭐
-- **Contents:** queue of pending tradesmen; the detail shows everything from M1
-  including the CIN photo
-- **Actions:** approve · reject with a reason the tradesman will read at M2
-- **States:** loading · empty · already handled by another admin (refresh and say so)
-- Writes an `audit_log` row either way.
+- **Contents:** the queue on one side, the application on the other. The detail
+  shows everything from M1 — headline, description, trades, experience, starting
+  price, portfolio — and the **CIN photo**, which is what the review is about.
+- **Oldest first.** It is a queue: the person who has waited longest is next.
+- **The CIN is fetched with the admin's token**, not pointed at by an `<img src>`
+  — an image element sends cookies but no Authorization header, so the bytes are
+  pulled and handed over as an object URL, revoked when the admin moves on.
+- **Actions:** approve · reject with a reason the tradesman will read at M2. Both
+  confirm first, and a rejection with no reason is refused — the reason is the
+  only thing M2 can tell him to fix.
+- **States:** loading · empty ("nothing waiting") · error with retry · **already
+  handled by another admin** → the API answers 409 and the screen says so rather
+  than overwriting a decision that has already been sent.
+- Writes an `audit_log` row either way, carrying the status before and after and,
+  for a rejection, the reason.
 
 ### A3 · Users — `/admin/users`
 - Search by phone or name, filter by role and status. The detail shows the account,

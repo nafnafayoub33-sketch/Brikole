@@ -154,7 +154,7 @@ export function ProviderProfilePage() {
               {t('profile.reviews')}
             </h2>
             {totalReviews > 0 && (
-              <span className="numeric text-sm font-medium text-fg-muted">
+              <span className="text-sm font-medium text-fg-muted">
                 {t('profile.reviewsCount', { count: totalReviews })}
               </span>
             )}
@@ -203,7 +203,7 @@ export function ProviderProfilePage() {
               >
                 {t('browse.previous')}
               </Button>
-              <span className="numeric text-sm text-fg-muted">
+              <span className="text-sm text-fg-muted">
                 {t('browse.pageOf', { page, pages })}
               </span>
               <Button

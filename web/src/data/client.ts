@@ -136,6 +136,33 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   }
 }
 
+/**
+ * Fetch a file that needs the access token.
+ *
+ * An `<img src>` sends cookies but not an Authorization header, so a private
+ * file cannot be displayed by pointing an image at it. This pulls the bytes
+ * with the token and hands back a blob the caller turns into an object URL.
+ */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = sessionStore.get()
+
+  let response: Response
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+  } catch {
+    throw new ApiError('network', 0)
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { code?: string } | null
+    throw new ApiError(body?.code ?? 'generic', response.status)
+  }
+  return response.blob()
+}
+
 /** Called once at start-up: turns a surviving refresh cookie into a session. */
 export async function restoreSession(): Promise<boolean> {
   return (await refreshAccessToken()) !== null

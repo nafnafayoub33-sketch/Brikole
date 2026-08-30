@@ -46,6 +46,7 @@ from app.models.user import User
 DEMO_PASSWORD = "demo1234"
 DEMO_PHONE_PREFIX = "+21277"  # a block real numbers never fall in
 DEMO_CLIENT_PREFIX = "+21276"
+DEMO_PENDING_PREFIX = "+212755"
 
 FIRST_NAMES = [
     "Youssef", "Rachid", "Hamid", "Abdelilah", "Mustapha", "Karim", "Said",
@@ -584,6 +585,113 @@ def recompute_caches(db: Session, providers: list[ProviderProfile]) -> None:
         profile.rating_avg = 0.0 if not count else round(float(average), 1)
 
 
+def _document_png(width: int = 480, height: int = 300) -> bytes:
+    """A stand-in identity document.
+
+    Bands rather than a flat square, so the approvals screen shows something
+    shaped like a document instead of a colour swatch — and so a broken image
+    is obvious rather than plausible.
+    """
+    import struct
+    import zlib
+
+    def pixel(x: int, y: int) -> tuple[int, int, int]:
+        if y < height // 6:
+            return (16, 58, 94)  # a header band
+        if height // 3 < y < height // 3 + 14 and width // 4 < x < width - 40:
+            return (150, 165, 180)  # a line of text
+        if height // 2 < y < height // 2 + 14 and width // 4 < x < width - 120:
+            return (150, 165, 180)
+        if height // 3 < y < height - 40 and 24 < x < width // 5:
+            return (196, 208, 220)  # the photo box
+        return (232, 238, 244)
+
+    raw = b"".join(
+        b"\x00" + b"".join(bytes(pixel(x, y)) for x in range(width)) for y in range(height)
+    )
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        body = tag + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    return (
+        b"\x89PNG\r\n\x1a\x0a"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 6))
+        + chunk(b"IEND", b"")
+    )
+
+
+def seed_pending_applications(db: Session, *, total: int, rng: random.Random) -> int:
+    """Applications waiting for an admin.
+
+    Every demo tradesman is approved, which leaves A2 empty and impossible to
+    judge. These wait in the queue with a real identity document behind them,
+    because reviewing one is the entire point of the screen.
+    """
+    from app.config import get_settings
+    from app.services.storage import Bucket, LocalDiskStorage
+
+    existing = set(
+        db.execute(
+            select(User.phone).where(User.phone.like(f"{DEMO_PENDING_PREFIX}%"))
+        ).scalars()
+    )
+    if len(existing) >= total:
+        return 0
+
+    cities = list(db.execute(select(City)).scalars())
+    trades = list(db.execute(select(Trade)).scalars())
+    storage = LocalDiskStorage(get_settings().upload_dir)
+    password_hash = hash_password(DEMO_PASSWORD)
+    document = _document_png()
+    created = 0
+
+    for index in range(len(existing), total):
+        city = rng.choice(cities)
+        trade = rng.choice(trades)
+
+        user = User(
+            phone=f"{DEMO_PENDING_PREFIX}{index:06d}",
+            password_hash=password_hash,
+            full_name=f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}",
+            role=Role.PROVIDER,
+            city_id=city.id,
+            language="ar",
+        )
+        db.add(user)
+        db.flush()
+
+        years = rng.randint(1, 20)
+        profile = ProviderProfile(
+            user_id=user.id,
+            city_id=city.id,
+            radius_km=rng.choice([5, 10, 20, 35]),
+            headline=rng.choice(HEADLINES.get(trade.slug, ["Services à domicile"])),
+            bio=rng.choice(BIO_TEMPLATES).format(years=years, city=city.name_fr),
+            years_experience=years,
+            starting_price_centimes=dirhams(BASE_PRICE_DH.get(trade.slug, 150)),
+            status=ProviderStatus.PENDING,
+            id_card_url=storage.save(
+                document, bucket=Bucket.PRIVATE, folder=f"id-cards/{user.id}"
+            ),
+        )
+        profile.trades = [trade]
+        db.add(profile)
+        db.flush()
+
+        db.add(
+            CreditAccount(
+                provider_id=profile.id,
+                balance_centimes=0,
+                free_leads_left=FREE_LEADS_NEW_PROVIDER,
+            )
+        )
+        created += 1
+
+    return created
+
+
 def main() -> int:
     settings = get_settings()
     if settings.is_production:
@@ -596,9 +704,11 @@ def main() -> int:
         jobs, reviews = seed_history(db, rng=rng)
         bios = backfill_bios(db, rng=rng)
         comments = refresh_comments(db, rng=rng)
+        waiting = seed_pending_applications(db, total=6, rng=rng)
 
     print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
     print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
+    print(f"applications waiting for an admin: {waiting}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0
 

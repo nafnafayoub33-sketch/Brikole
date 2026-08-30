@@ -8,6 +8,7 @@ import { ForgotPage } from '@/features/auth/ForgotPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
+import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
@@ -107,7 +108,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<NotBuilt screen="A1" />} />
-        <Route path="approvals" element={<NotBuilt screen="A2" />} />
+        <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="users" element={<NotBuilt screen="A3" />} />
         <Route path="requests" element={<NotBuilt screen="A4" />} />
         <Route path="finance" element={<NotBuilt screen="A5" />} />

@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.routes import admin, auth, catalog, health, pro, providers, uploads
+from app.api.routes import (
+    admin,
+    approvals,
+    auth,
+    catalog,
+    health,
+    pro,
+    providers,
+    uploads,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -14,3 +23,4 @@ api_router.include_router(providers.router)
 api_router.include_router(uploads.router)
 api_router.include_router(pro.router)
 api_router.include_router(admin.router)
+api_router.include_router(approvals.router)

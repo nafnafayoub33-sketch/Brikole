@@ -81,6 +81,11 @@ SQLAlchemy 2 + Alembic + MySQL 8.
   never `text-left`.
 - Numbers, prices and phone numbers stay Latin digits and LTR in all three
   languages. Never build a sentence by concatenation — use interpolation.
+- **The `numeric` class goes on the number, never on a line that also holds
+  words.** It sets `direction: ltr`, so an element carrying both a translated
+  label and a number lays the whole line out left to right — in Arabic that
+  turned `07 55 00 00 01` into `01 00 00 55 07`, and it is invisible in French.
+  Wrap the value: `{t('phone')}: <span className="numeric">{number}</span>`.
 
 **Database**
 - Never edit a migration that has been committed. Add a new one.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.core.policy import MAX_PORTFOLIO_PHOTOS, MAX_RADIUS_KM
@@ -45,3 +47,18 @@ class MyProviderProfileOut(ProviderProfileOut):
 
     rejection_reason: str | None
     id_card_path: str | None
+
+
+class ApplicationOut(MyProviderProfileOut):
+    """An application as an admin reads it at A2.
+
+    It carries the applicant's phone, which the public profile never does: an
+    admin checking an identity has to be able to reach the person.
+    """
+
+    phone: str
+    submitted_at: datetime
+
+
+class RejectionIn(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)

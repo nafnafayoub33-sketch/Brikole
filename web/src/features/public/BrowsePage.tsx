@@ -159,7 +159,7 @@ export function BrowsePage() {
             onClick={() => update({ page: String(page - 1) })}
             label={t('browse.previous')}
           />
-          <span className="numeric text-sm font-medium text-fg-muted">
+          <span className="text-sm font-medium text-fg-muted">
             {t('browse.pageOf', { page, pages })}
           </span>
           <PageButton
