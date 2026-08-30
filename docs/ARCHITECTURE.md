@@ -16,7 +16,7 @@ roles, one FastAPI backend, one MySQL database.
 | DB | **MySQL 8** | asked for. No PostGIS, so proximity is Haversine over an index on `(city_id)` then a bounding box on `(lat, lng)` — fine well past a million rows |
 | Auth | phone + password → JWT | short-lived access token in memory, refresh token in an httpOnly cookie. SMS OTP costs money per message, so it is Phase 4 behind `SmsProvider` |
 | Passwords | argon2id | via `passlib` |
-| Files | `StorageProvider` interface, local disk in dev | S3/R2 later without touching a screen |
+| Files | `StorageProvider` interface, local disk in dev | S3/R2 later without touching a screen. **Two buckets:** `public` for avatars and portfolio photos, `private` for identity documents. A bucket is public or it is not — one bucket does not survive contact with what goes in it. The declared content type is a hint from the client, so uploads are typed by their first bytes instead. |
 | i18n | i18next — `ar` (default, RTL) · `fr` · `en` | the API returns error *codes*; only the client owns wording |
 
 MySQL 8 is the production target. Local development runs the same schema on
@@ -91,12 +91,20 @@ role exists as something other than a weaker admin.
 5. Five wrong passwords → the account locks for 15 minutes, counted server-side
 
 **Tradesman onboarding (M1 → M2 → A2)**
-1. M1 collects identity, trades, city and radius, bio and portfolio photos
+1. M1 collects trades, city and radius, the headline and description, years of
+   experience, an optional starting price, an optional avatar, the identity
+   document, and up to ten portfolio photos — over four steps, beside a live
+   preview of the card a client will see
 2. The profile is created `pending`; the guard in the service layer forces that
-   status regardless of what the client sent
-3. A2 is the admin queue: `approve` or `reject` with a reason
-4. Rejected shows the reason at M2 and can be resubmitted once answered
-5. Only an `approved` profile appears in search or sees the request feed
+   status regardless of what the client sent, and an approved profile cannot be
+   resubmitted at all — it is edited at M8, because resubmitting would take a
+   tradesman out of the grid he was let into
+3. The identity document goes to the private bucket and is readable by its owner
+   and an admin, nobody else. Asking for one that is not yours is a 404, not a
+   403: whether somebody has uploaded an identity document is itself private
+4. A2 is the admin queue: `approve` or `reject` with a reason
+5. Rejected shows the reason at M2 and can be resubmitted once answered
+6. Only an `approved` profile appears in search or sees the request feed
 
 **Counting who is available, and where**
 `GET /trades` returns each trade with `providers_count`, and takes an optional

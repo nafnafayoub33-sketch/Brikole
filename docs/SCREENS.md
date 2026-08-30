@@ -174,19 +174,32 @@ Owner-facing controls are large: these are tapped on a phone, outdoors, sometime
 with wet or dirty hands. Minimum touch target 52px.
 
 ### M1 · Become a m3allem — `/pro/onboarding` ⭐
-- **Contents:** four steps
-  1. **Trades** — one or more, from the same grid as C1
-  2. **Where** — city and a radius in km
-  3. **Who you are** — bio, years of experience, CIN photo (private, never public)
+- **Contents:** four steps, with a **live preview** of the profile card beside
+  them — filling in a form without seeing what it produces is how somebody ends
+  up writing "plombier" in a field labelled *your service in one line*.
+  1. **Trades** — one to five, from the same grid as C1
+  2. **Where** — city, and a radius in km
+  3. **Who you are** — headline, description, years of experience, optional
+     starting price, optional photo, and the **CIN photo**
   4. **Your work** — up to 10 portfolio photos
-- **Actions:** submit for approval
-- **States:** per-step validation · uploading · submitted · submit failed with retry
+- **The CIN is private.** It goes to the private bucket, it is readable only by
+  its owner and an admin, and the screen says so where he uploads it. It never
+  appears on P3.
+- **Actions:** next / back / submit for approval. *Next* is disabled until the
+  step is complete, and step 3 is not complete without the CIN — it is the one
+  thing an admin's review is actually about.
+- **States:** per-step validation · uploading, with the preview drawn from the
+  file the browser already has · submitted · submit failed with retry
 - → M2
 
 ### M2 · Approval status — `/pro/status`
-- **Contents:** pending ("usually under 24h"), or rejected with the admin's reason
-  spelled out and an edit button
-- **Actions:** resubmit after fixing
+- **Contents:** pending ("usually under 24h"), or rejected with the admin's
+  reason spelled out and a button back to M1, or approved with a link to his
+  public profile
+- **Routing:** `/pro` reads the profile and decides — no application sends him
+  to M1, pending or rejected to M2, approved to his dashboard. The *absence* of
+  a profile is the signal, so a tradesman who registered and closed the tab
+  lands back on the form rather than on an empty dashboard.
 - → M3 once approved
 
 ### M3 · Dashboard — `/pro`

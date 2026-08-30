@@ -8,6 +8,9 @@ import { ForgotPage } from '@/features/auth/ForgotPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
+import { OnboardingPage } from '@/features/pro/OnboardingPage'
+import { ProHome } from '@/features/pro/ProHome'
+import { StatusPage } from '@/features/pro/StatusPage'
 import { LandingPage } from '@/features/public/LandingPage'
 import { ProviderProfilePage } from '@/features/public/ProviderProfilePage'
 import { NotFoundPage } from '@/features/public/NotFoundPage'
@@ -65,9 +68,9 @@ export function AppRoutes() {
           </RequireRole>
         }
       >
-        <Route index element={<NotBuilt screen="M3" />} />
-        <Route path="onboarding" element={<NotBuilt screen="M1" />} />
-        <Route path="status" element={<NotBuilt screen="M2" />} />
+        <Route index element={<ProHome />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
+        <Route path="status" element={<StatusPage />} />
         <Route path="requests" element={<NotBuilt screen="M4" />} />
         <Route path="requests/:id" element={<NotBuilt screen="M5" />} />
         <Route path="offers" element={<NotBuilt screen="M6" />} />

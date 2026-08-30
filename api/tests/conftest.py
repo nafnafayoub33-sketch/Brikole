@@ -67,14 +67,24 @@ def db(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(db: Session):
+def storage(tmp_path):
+    """Uploads land in a temp directory, never in the working tree."""
+    from app.services.storage import LocalDiskStorage
+
+    return LocalDiskStorage(tmp_path / "uploads")
+
+
+@pytest.fixture
+def client(db: Session, storage):
     from fastapi.testclient import TestClient
 
     from app.db import get_db
+    from app.deps import get_storage
     from app.main import create_app
 
     app = create_app()
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_storage] = lambda: storage
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

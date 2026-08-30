@@ -8,6 +8,7 @@ gate — so every non-public route below declares one explicitly, and there is n
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -21,6 +22,7 @@ from app.core.permissions import require_permission as _require_permission
 from app.db import get_db
 from app.models.user import User
 from app.services.auth import AuthService
+from app.services.storage import LocalDiskStorage, StorageProvider
 
 REFRESH_COOKIE = "brikole_refresh"
 #: Scoped to the auth routes so it is not attached to every API call — and
@@ -36,6 +38,16 @@ def get_auth_service(db: DbSession, settings: SettingsDep) -> AuthService:
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+@lru_cache
+def get_storage() -> StorageProvider:
+    """One storage provider per process. Local disk here; S3 or R2 in
+    production, behind the same protocol, with no route changing."""
+    return LocalDiskStorage(get_settings().upload_dir)
+
+
+StorageDep = Annotated[StorageProvider, Depends(get_storage)]
 
 
 def _bearer_token(request: Request) -> str:

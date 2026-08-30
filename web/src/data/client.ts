@@ -38,6 +38,7 @@ export class ApiError extends Error {
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
+  /** A `FormData` is sent as-is; anything else is sent as JSON. */
   body?: unknown
   /** Attach the access token, and refresh it once if it has expired. */
   authenticated?: boolean
@@ -74,8 +75,11 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function send<T>(path: string, options: RequestOptions, token: string | null): Promise<T> {
+  const multipart = options.body instanceof FormData
   const headers: Record<string, string> = {}
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  // The browser has to set multipart's Content-Type itself: it carries the
+  // boundary, which we do not know.
+  if (options.body !== undefined && !multipart) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
   let response: Response
@@ -84,7 +88,12 @@ async function send<T>(path: string, options: RequestOptions, token: string | nu
       method: options.method ?? 'GET',
       headers,
       credentials: 'include',
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body:
+        options.body === undefined
+          ? undefined
+          : multipart
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
       signal: options.signal,
     })
   } catch {
