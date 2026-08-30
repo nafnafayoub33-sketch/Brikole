@@ -299,6 +299,15 @@ with wet or dirty hands. Minimum touch target 52px.
   admin approves it,** and the screen says so.
 - **States:** loading · empty ledger · a pending top-up (shown at the top with its
   submitted date) · rejected top-up with the admin's reason
+- **One pending claim at a time.** A second is almost always him thinking the
+  first did not go through, and it is two rows an admin has to reconcile against
+  one bank statement.
+- **Every amount is shown as the jobs it buys.** "500 DH" means nothing to a
+  tradesman deciding how much to transfer; "50 jobs" means everything.
+- **The reference is mandatory** — it is what an admin types into a statement
+  search, and without it A5 is a list of claims nobody can check.
+- The receipt goes to the private bucket, like the CIN: it has an account number
+  on it.
 
 ### M10 · Reviews — `/pro/reviews`
 - Rating breakdown and the reviews themselves. He may reply once to each.
@@ -375,6 +384,11 @@ with wet or dirty hands. Minimum touch target 52px.
   ledger across all tradesmen, and revenue by period and by trade
 - **Approving a top-up** credits the balance and writes the ledger row in one
   transaction. Rejecting moves nothing and records a reason.
+- **Oldest first.** It is a queue: the tradesman who has waited longest is next,
+  and he is blocked from working until somebody looks.
+- **Two admins on one queue** get a 409 on the second approval rather than a
+  balance credited twice.
+- Both actions write an `audit_log` row carrying the balance before and after.
 - **States:** loading · empty · approve failed because it was already handled
 
 ### A6 · Trades and cities — `/admin/catalog`

@@ -9,6 +9,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
+import { FinancePage } from '@/features/admin/FinancePage'
 import { JobPage } from '@/features/client/JobPage'
 import { JobsPage } from '@/features/client/JobsPage'
 import { NewRequestPage } from '@/features/client/NewRequestPage'
@@ -16,6 +17,7 @@ import { RequestPage } from '@/features/client/RequestPage'
 import { RequestsPage } from '@/features/client/RequestsPage'
 import { ReviewPage } from '@/features/client/ReviewPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
+import { CreditPage } from '@/features/pro/CreditPage'
 import { FeedPage } from '@/features/pro/FeedPage'
 import { ProJobsPage } from '@/features/pro/JobsPage'
 import { MyOffersPage } from '@/features/pro/MyOffersPage'
@@ -88,7 +90,7 @@ export function AppRoutes() {
         <Route path="offers" element={<MyOffersPage />} />
         <Route path="jobs" element={<ProJobsPage />} />
         <Route path="profile" element={<NotBuilt screen="M8" />} />
-        <Route path="credit" element={<NotBuilt screen="M9" />} />
+        <Route path="credit" element={<CreditPage />} />
         <Route path="reviews" element={<NotBuilt screen="M10" />} />
         <Route path="account" element={<NotBuilt screen="M11" />} />
       </Route>
@@ -122,7 +124,7 @@ export function AppRoutes() {
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="users" element={<NotBuilt screen="A3" />} />
         <Route path="requests" element={<NotBuilt screen="A4" />} />
-        <Route path="finance" element={<NotBuilt screen="A5" />} />
+        <Route path="finance" element={<FinancePage />} />
         <Route path="catalog" element={<NotBuilt screen="A6" />} />
         <Route path="settings" element={<NotBuilt screen="A7" />} />
         <Route path="audit" element={<NotBuilt screen="A8" />} />

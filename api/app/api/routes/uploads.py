@@ -28,6 +28,7 @@ class UploadPurpose(StrEnum):
     ID_CARD = "id_card"
     PORTFOLIO = "portfolio"
     REQUEST_PHOTO = "request_photo"
+    RECEIPT = "receipt"
 
 
 #: Who may upload what. Stated as a table rather than as a chain of `if`s,
@@ -37,6 +38,7 @@ ALLOWED_ROLES: dict[UploadPurpose, frozenset[Role] | None] = {
     UploadPurpose.ID_CARD: frozenset({Role.PROVIDER}),
     UploadPurpose.PORTFOLIO: frozenset({Role.PROVIDER}),
     UploadPurpose.REQUEST_PHOTO: frozenset({Role.CLIENT}),
+    UploadPurpose.RECEIPT: frozenset({Role.PROVIDER}),
 }
 
 
@@ -67,12 +69,15 @@ async def upload(
             ErrorCode.VALIDATION_FAILED, reason="file_too_large", max_bytes=MAX_BYTES
         )
 
-    bucket = Bucket.PRIVATE if purpose is UploadPurpose.ID_CARD else Bucket.PUBLIC
+    # A bank receipt carries an account number, exactly like an ID card does.
+    private = {UploadPurpose.ID_CARD, UploadPurpose.RECEIPT}
+    bucket = Bucket.PRIVATE if purpose in private else Bucket.PUBLIC
     folder = {
         UploadPurpose.AVATAR: "avatars",
         UploadPurpose.ID_CARD: "id-cards",
         UploadPurpose.PORTFOLIO: "portfolio",
         UploadPurpose.REQUEST_PHOTO: "requests",
+        UploadPurpose.RECEIPT: "receipts",
     }[purpose]
 
     path = storage.save(data, bucket=bucket, folder=f"{folder}/{user.id}")

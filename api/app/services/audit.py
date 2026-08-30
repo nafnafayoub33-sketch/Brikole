@@ -20,6 +20,8 @@ from app.models.user import User
 class AuditAction:
     PROVIDER_APPROVED = "provider.approved"
     PROVIDER_REJECTED = "provider.rejected"
+    TOPUP_APPROVED = "topup.approved"
+    TOPUP_REJECTED = "topup.rejected"
 
 
 def record(

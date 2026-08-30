@@ -36,7 +36,12 @@ export function useMyProfile(enabled = true) {
   })
 }
 
-export type UploadPurpose = 'avatar' | 'id_card' | 'portfolio' | 'request_photo'
+export type UploadPurpose =
+  | 'avatar'
+  | 'id_card'
+  | 'portfolio'
+  | 'request_photo'
+  | 'receipt'
 
 export interface UploadResult {
   path: string
