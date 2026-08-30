@@ -71,6 +71,7 @@ export function AppRoutes() {
         <Route path="requests" element={<RequestsPage />} />
         <Route path="requests/new" element={<NewRequestPage />} />
         <Route path="requests/:id" element={<RequestPage />} />
+        <Route path="requests/:id/edit" element={<NewRequestPage editing />} />
         <Route path="jobs" element={<JobsPage />} />
         <Route path="jobs/:id" element={<JobPage />} />
         <Route path="jobs/:id/review" element={<ReviewPage />} />

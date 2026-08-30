@@ -57,6 +57,22 @@ def list_offers(request_id: int, user: CurrentUser, db: DbSession) -> list[Offer
     return [_offer_out(offer) for offer in RequestService(db).list_offers(user, request_id)]
 
 
+@router.patch("/{request_id}", response_model=RequestOut)
+def update_request(
+    request_id: int, payload: NewRequestIn, user: CurrentUser, db: DbSession
+) -> RequestOut:
+    """C3. Allowed only while nobody has priced it — see the service."""
+    return _out(RequestService(db).update(user, request_id, payload))
+
+
+@router.post("/{request_id}/offers/{offer_id}/decline", response_model=OfferOut)
+def decline_offer(
+    request_id: int, offer_id: int, user: CurrentUser, db: DbSession
+) -> OfferOut:
+    """C3. Turning one down without choosing another."""
+    return _offer_out(RequestService(db).decline_offer(user, request_id, offer_id))
+
+
 @router.post("/{request_id}/cancel", response_model=RequestOut)
 def cancel_request(
     request_id: int, payload: CancelRequestIn, user: CurrentUser, db: DbSession

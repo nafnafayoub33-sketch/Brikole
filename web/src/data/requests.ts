@@ -77,6 +77,26 @@ export function useCreateRequest() {
   })
 }
 
+export function useUpdateRequest() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ requestId, ...body }: NewRequestBody & { requestId: number }) =>
+      api<ServiceRequest>(`/client/requests/${requestId}`, { method: 'PATCH', body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+  })
+}
+
+export function useDeclineOffer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ requestId, offerId }: { requestId: number; offerId: number }) =>
+      api<Offer>(`/client/requests/${requestId}/offers/${offerId}/decline`, {
+        method: 'POST',
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: REQUESTS_KEY }),
+  })
+}
+
 export function useCancelRequest() {
   const queryClient = useQueryClient()
   return useMutation({

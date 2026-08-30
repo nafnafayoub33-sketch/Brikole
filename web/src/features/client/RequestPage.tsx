@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAcceptOffer } from '@/data/jobs'
 import {
   useCancelRequest,
+  useDeclineOffer,
   useMyRequest,
   useRequestOffers,
   type Offer,
@@ -152,6 +153,16 @@ export function RequestPage() {
 
       {data.status === 'open' && (
         <footer className="mt-10 border-t border-border pt-6">
+          {data.offers_count === 0 ? (
+            <div className="mb-6">
+              <Link to={`/client/requests/${requestId}/edit`}>
+                <Button variant="secondary">{t('requests.edit')}</Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="mb-6 text-sm text-fg-subtle">{t('requests.editLocked')}</p>
+          )}
+
           {confirming ? (
             <div className="flex flex-col gap-3">
               <p className="text-sm text-fg-muted">{t('requests.cancelConfirm')}</p>
@@ -393,6 +404,7 @@ function OfferCard({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const accept = useAcceptOffer()
+  const decline = useDeclineOffer()
   const provider = offer.provider
 
   return (
@@ -482,8 +494,14 @@ function OfferCard({
         </div>
       )}
 
-      {!readOnly && offer.status === 'pending' && (
+      {offer.status === 'rejected' && (
         <div className="mt-4 border-t border-border pt-4">
+          <span className="text-sm text-fg-subtle">{t('requests.declined')}</span>
+        </div>
+      )}
+
+      {!readOnly && offer.status === 'pending' && (
+        <div className="mt-4 flex flex-wrap items-start gap-4 border-t border-border pt-4">
           {/* The one irreversible press in the client's flow, so it says out
               loud what it does to the offers he is not choosing. */}
           <ConfirmButton
@@ -498,9 +516,22 @@ function OfferCard({
               )
             }
           />
-          {accept.isError && (
-            <div className="mt-3">
-              <ErrorState error={accept.error} />
+
+          {/* Turning one down without choosing another: a tradesman is better
+              off knowing now than sitting in a queue that has moved past him. */}
+          <ConfirmButton
+            label={t('requests.decline')}
+            question={t('requests.declineConfirm')}
+            confirmLabel={t('requests.declineYes')}
+            variant="ghost"
+            tone="danger"
+            loading={decline.isPending}
+            onConfirm={() => decline.mutate({ requestId, offerId: offer.id })}
+          />
+
+          {(accept.isError || decline.isError) && (
+            <div className="w-full">
+              <ErrorState error={accept.error ?? decline.error} />
             </div>
           )}
         </div>

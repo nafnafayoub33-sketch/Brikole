@@ -295,3 +295,125 @@ def test_somebody_elses_offers_are_not_found(client, api_prefix, db, setup, with
 
 def test_reading_offers_needs_an_account(client, api_prefix, with_offers):
     assert client.get(f"{api_prefix}/client/requests/{with_offers}/offers").status_code == 401
+
+
+# --- C3: declining one offer, and editing before any arrive -------------
+
+
+def test_declining_one_offer_leaves_the_others_alone(client, api_prefix, db, setup, with_offers):
+    offers = client.get(
+        f"{api_prefix}/client/requests/{with_offers}/offers", headers=auth(setup["token"])
+    ).json()
+    target = next(o for o in offers if o["status"] == "pending")
+
+    response = client.post(
+        f"{api_prefix}/client/requests/{with_offers}/offers/{target['id']}/decline",
+        headers=auth(setup["token"]),
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "rejected"
+
+    after = client.get(
+        f"{api_prefix}/client/requests/{with_offers}/offers", headers=auth(setup["token"])
+    ).json()
+    assert sum(1 for o in after if o["status"] == "pending") == 1
+    # And the request is still open for the ones he has not answered.
+    db.expire_all()
+    assert db.get(ServiceRequest, with_offers).status is RequestStatus.OPEN
+
+
+def test_an_offer_cannot_be_declined_twice(client, api_prefix, setup, with_offers):
+    offers = client.get(
+        f"{api_prefix}/client/requests/{with_offers}/offers", headers=auth(setup["token"])
+    ).json()
+    target = next(o for o in offers if o["status"] == "pending")
+    url = f"{api_prefix}/client/requests/{with_offers}/offers/{target['id']}/decline"
+
+    assert client.post(url, headers=auth(setup["token"])).status_code == 200
+    assert client.post(url, headers=auth(setup["token"])).status_code == 409
+
+
+def test_somebody_elses_offer_cannot_be_declined(client, api_prefix, db, setup, with_offers):
+    offers = client.get(
+        f"{api_prefix}/client/requests/{with_offers}/offers", headers=auth(setup["token"])
+    ).json()
+    target = next(o for o in offers if o["status"] == "pending")
+
+    make_user(db, phone="+212611111119", role=Role.CLIENT)
+    db.commit()
+    other = token_for(client, api_prefix, "0611111119")
+
+    response = client.post(
+        f"{api_prefix}/client/requests/{with_offers}/offers/{target['id']}/decline",
+        headers=auth(other),
+    )
+    assert response.status_code == 404
+
+
+def test_a_request_can_be_rewritten_while_nobody_has_answered(
+    client, api_prefix, db, setup
+):
+    request_id = post(client, api_prefix, setup).json()["id"]
+
+    response = client.patch(
+        f"{api_prefix}/client/requests/{request_id}",
+        json=body(setup, title="Chauffe-eau en panne", urgency="flexible"),
+        headers=auth(setup["token"]),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "Chauffe-eau en panne"
+    assert response.json()["urgency"] == "flexible"
+
+
+def test_editing_replaces_the_photos_wholesale(client, api_prefix, setup):
+    request_id = post(client, api_prefix, setup).json()["id"]
+
+    updated = client.patch(
+        f"{api_prefix}/client/requests/{request_id}",
+        json=body(setup, photo_paths=["public/requests/1/b.jpg", "public/requests/1/c.jpg"]),
+        headers=auth(setup["token"]),
+    ).json()
+    assert [photo["url"].rsplit("/", 1)[-1] for photo in updated["photos"]] == [
+        "b.jpg",
+        "c.jpg",
+    ]
+
+
+def test_once_one_offer_exists_the_request_is_frozen(client, api_prefix, setup, with_offers):
+    """A tradesman priced the job as it was written. Changing it under his quote
+    turns a 450 DH answer to "unblock a sink" into an answer to something else."""
+    response = client.patch(
+        f"{api_prefix}/client/requests/{with_offers}",
+        json=body(setup, title="Refaire toute la salle de bain"),
+        headers=auth(setup["token"]),
+    )
+    assert response.status_code == 409
+    assert response.json()["details"]["reason"] == "already_answered"
+
+
+def test_a_cancelled_request_cannot_be_rewritten(client, api_prefix, db, setup):
+    request_id = post(client, api_prefix, setup).json()["id"]
+    db.get(ServiceRequest, request_id).status = RequestStatus.CANCELLED
+    db.commit()
+
+    response = client.patch(
+        f"{api_prefix}/client/requests/{request_id}",
+        json=body(setup),
+        headers=auth(setup["token"]),
+    )
+    assert response.status_code == 409
+
+
+def test_somebody_elses_request_cannot_be_rewritten(client, api_prefix, db, setup):
+    request_id = post(client, api_prefix, setup).json()["id"]
+
+    make_user(db, phone="+212611111120", role=Role.CLIENT)
+    db.commit()
+    other = token_for(client, api_prefix, "0611111120")
+
+    response = client.patch(
+        f"{api_prefix}/client/requests/{request_id}",
+        json=body(setup, title="Pas à moi"),
+        headers=auth(other),
+    )
+    assert response.status_code == 404

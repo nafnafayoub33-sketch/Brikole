@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { useCities, useTrades } from '@/data/catalog'
-import { useCreateRequest, useMyRequests, type Urgency } from '@/data/requests'
+import {
+  useCreateRequest,
+  useMyRequest,
+  useMyRequests,
+  useUpdateRequest,
+  type Urgency,
+} from '@/data/requests'
 import { localisedName } from '@/data/types'
 import { EMPTY_DRAFT, clearDraft, readDraft, writeDraft } from '@/features/client/draft'
 import { useErrorMessage } from '@/hooks/useErrorMessage'
@@ -34,27 +40,67 @@ const URGENCIES: Urgency[] = ['today', 'this_week', 'flexible']
  * work, and losing it to a misplaced tap is the difference between a request
  * posted and a visitor who does not come back.
  */
-export function NewRequestPage() {
+export function NewRequestPage({ editing = false }: { editing?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const language = i18n.language as Language
   const navigate = useNavigate()
+  const params = useParams()
+
+  const requestId = editing ? Number(params.id) : null
+  const valid = requestId !== null && Number.isInteger(requestId) && requestId > 0
 
   const trades = useTrades()
   const cities = useCities()
   const existing = useMyRequests()
+  const current = useMyRequest(valid ? requestId : null)
   const create = useCreateRequest()
+  const update = useUpdateRequest()
   const message = useErrorMessage()
 
-  const [draft, setDraft] = useState(() => readDraft())
+  // Editing never touches the draft: it belongs to the request being written,
+  // and loading an existing one into it would silently eat that work.
+  const [draft, setDraft] = useState(() => (editing ? EMPTY_DRAFT : readDraft()))
   const [tradeQuery, setTradeQuery] = useState('')
   const [photos, setPhotos] = useState<PickedPhoto[]>(() =>
-    readDraft().photoPaths.map((path) => ({ path, preview: `/api/v1/uploads/${path}` })),
+    editing
+      ? []
+      : readDraft().photoPaths.map((path) => ({ path, preview: `/api/v1/uploads/${path}` })),
   )
+  const [loaded, setLoaded] = useState(false)
+
+  // Seed once from the request being edited, then leave his typing alone.
+  useEffect(() => {
+    if (!editing || loaded || !current.data) return
+    const request = current.data
+    setDraft({
+      ...EMPTY_DRAFT,
+      tradeId: request.trade.id,
+      cityId: request.city.id,
+      title: request.title,
+      description: request.description,
+      address: request.address,
+      urgency: request.urgency,
+      budgetMin: request.budget_min_centimes
+        ? String(Math.round(request.budget_min_centimes / 100))
+        : '',
+      budgetMax: request.budget_max_centimes
+        ? String(Math.round(request.budget_max_centimes / 100))
+        : '',
+    })
+    setPhotos(
+      request.photos.map((photo) => ({
+        path: photo.url.replace('/api/v1/uploads/', ''),
+        preview: photo.url,
+      })),
+    )
+    setLoaded(true)
+  }, [editing, loaded, current.data])
 
   // Every keystroke, because the tab can close between any two of them.
   useEffect(() => {
+    if (editing) return
     writeDraft({ ...draft, photoPaths: photos.map((photo) => photo.path) })
-  }, [draft, photos])
+  }, [editing, draft, photos])
 
   function set<K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -82,8 +128,7 @@ export function NewRequestPage() {
   }
 
   function publish() {
-    create.mutate(
-      {
+    const values = {
         trade_id: draft.tradeId as number,
         city_id: draft.cityId as number,
         title: draft.title.trim(),
@@ -94,25 +139,34 @@ export function NewRequestPage() {
         urgency: draft.urgency,
         budget_min_centimes: toCentimes(draft.budgetMin),
         budget_max_centimes: toCentimes(draft.budgetMax),
-        photo_paths: photos.map((photo) => photo.path),
+      photo_paths: photos.map((photo) => photo.path),
+    }
+
+    if (editing && valid) {
+      update.mutate(
+        { requestId, ...values },
+        { onSuccess: () => navigate(`/client/requests/${requestId}`) },
+      )
+      return
+    }
+
+    create.mutate(values, {
+      onSuccess: (request) => {
+        clearDraft()
+        setDraft(EMPTY_DRAFT)
+        setPhotos([])
+        navigate(`/client/requests/${request.id}`)
       },
-      {
-        onSuccess: (request) => {
-          clearDraft()
-          setDraft(EMPTY_DRAFT)
-          setPhotos([])
-          navigate(`/client/requests/${request.id}`)
-        },
-      },
-    )
+    })
   }
 
-  if (trades.isPending || cities.isPending || existing.isPending) {
+  if (trades.isPending || cities.isPending || existing.isPending || (editing && current.isPending)) {
     return <Skeleton className="h-96" />
   }
 
-  // The cap is not an error to hit at the end of four steps. Say it first.
-  if (atCap) {
+  // The cap counts requests he has not closed. Editing one of them is not
+  // adding another, so it is not gated on it.
+  if (!editing && atCap) {
     return (
       <EmptyState
         title={t('request.capTitle', { count: openRequests.length })}
@@ -130,7 +184,9 @@ export function NewRequestPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold text-fg sm:text-3xl">{t('request.newTitle')}</h1>
+      <h1 className="text-2xl font-bold text-fg sm:text-3xl">
+        {editing ? t('requests.editTitle') : t('request.newTitle')}
+      </h1>
       <p className="mt-2 text-fg-muted">{t('request.newSubtitle')}</p>
 
       <div className="mt-8">
@@ -321,7 +377,9 @@ export function NewRequestPage() {
                 </dl>
               </div>
 
-              {create.isError && <Alert tone="danger">{message(create.error)}</Alert>}
+              {(create.isError || update.isError) && (
+                <Alert tone="danger">{message(create.error ?? update.error)}</Alert>
+              )}
             </div>
           </Step>
         )}
@@ -336,8 +394,8 @@ export function NewRequestPage() {
               {t('onboarding.next')}
             </Button>
           ) : (
-            <Button size="lg" onClick={publish} loading={create.isPending}>
-              {t('request.publish')}
+            <Button size="lg" onClick={publish} loading={create.isPending || update.isPending}>
+              {editing ? t('requests.saveChanges') : t('request.publish')}
             </Button>
           )}
         </div>

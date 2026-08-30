@@ -135,6 +135,19 @@ Trades & cities · Settings · Audit log.
 - **Actions:** accept an offer (confirms, and says plainly that the others will be
   declined) · decline one · cancel the request (confirms) · edit while no offer
   has arrived
+- **Declining one is its own action**, not a side effect of accepting another. A
+  client who knows a price is wrong should be able to clear it out of his list,
+  and a tradesman is better off learning it now than sitting in a queue that has
+  silently moved past him.
+- **Editing stops the moment the first offer arrives**, and the screen says why
+  rather than hiding the button. A tradesman priced the job as it was written;
+  changing it under his quote turns a 450 DH answer to "unblock a sink" into an
+  answer to "retile the bathroom". After that, the way to change the work is to
+  cancel and post again — which costs the client nothing and costs the tradesmen
+  their guess.
+- **Editing reuses C1's wizard** rather than a second form, pre-filled from the
+  request. It never touches C1's saved draft: that draft belongs to a request
+  being written, and loading an existing one into it would silently eat that work.
 - **States:** loading · no offer yet ("Tradesmen are being notified — offers usually
   arrive within a few hours") · request cancelled · request already assigned
   (offers become read-only) · accept failed because someone else's offer was

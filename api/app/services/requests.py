@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
-from app.core.enums import RequestStatus, Role
+from app.core.enums import OfferStatus, RequestStatus, Role
 from app.core.errors import DomainError, ErrorCode
 from app.core.policy import SettingKey
 from app.core.service_request import validate_request
@@ -111,6 +111,92 @@ class RequestService:
 
         self.db.commit()
         return self.get_own(user, request.id)
+
+    def decline_offer(self, user: User, request_id: int, offer_id: int) -> Offer:
+        """Turn one offer down without choosing another.
+
+        Separate from accepting on purpose: a client who knows this price is
+        wrong should be able to clear it out of his list, and a tradesman is
+        better off learning it now than sitting in a queue that has silently
+        moved past him.
+        """
+        request = self.get_own(user, request_id)
+
+        if request.status is not RequestStatus.OPEN:
+            raise DomainError(ErrorCode.CONFLICT, status=request.status.value)
+
+        offer = self.db.get(Offer, offer_id)
+        if offer is None or offer.request_id != request.id:
+            raise DomainError(ErrorCode.NOT_FOUND)
+
+        if offer.status is not OfferStatus.PENDING:
+            raise DomainError(ErrorCode.CONFLICT, status=offer.status.value)
+
+        offer.status = OfferStatus.REJECTED
+        offer.responded_at = utcnow()
+
+        self.db.commit()
+        self.db.refresh(offer)
+        return offer
+
+    def update(self, user: User, request_id: int, payload: NewRequestIn) -> ServiceRequest:
+        """Rewrite a request nobody has answered yet.
+
+        The moment one offer exists, editing is off: a tradesman priced the
+        job as it was written, and changing the job under his quote is how a
+        450 DH answer to "unblock a sink" becomes an answer to "retile the
+        bathroom". After that the way to change the work is to cancel and post
+        again, which costs him nothing and costs the tradesmen their guess.
+        """
+        request = self.get_own(user, request_id)
+
+        if request.status is not RequestStatus.OPEN:
+            raise DomainError(ErrorCode.CONFLICT, status=request.status.value)
+        if request.offers_count > 0:
+            raise DomainError(ErrorCode.CONFLICT, reason="already_answered")
+
+        new = validate_request(
+            trade_id=payload.trade_id,
+            city_id=payload.city_id,
+            title=payload.title,
+            description=payload.description,
+            address=payload.address,
+            latitude=payload.latitude,
+            longitude=payload.longitude,
+            urgency=payload.urgency,
+            budget_min_centimes=payload.budget_min_centimes,
+            budget_max_centimes=payload.budget_max_centimes,
+            photo_paths=payload.photo_paths,
+        )
+
+        trade = self.db.get(Trade, new.trade_id)
+        if trade is None or not trade.is_active:
+            raise DomainError(ErrorCode.VALIDATION_FAILED, field="trade_id")
+
+        city = self.db.get(City, new.city_id)
+        if city is None or not city.is_active:
+            raise DomainError(ErrorCode.VALIDATION_FAILED, field="city_id")
+
+        request.trade_id = new.trade_id
+        request.city_id = new.city_id
+        request.title = new.title
+        request.description = new.description
+        request.address = new.address
+        request.latitude = new.latitude
+        request.longitude = new.longitude
+        request.urgency = new.urgency
+        request.budget_min_centimes = new.budget_min_centimes
+        request.budget_max_centimes = new.budget_max_centimes
+
+        # Photos are replaced wholesale: the wizard sends the full set it holds,
+        # so a diff would only be a way to disagree with it.
+        request.photos.clear()
+        self.db.flush()
+        for order, path in enumerate(new.photo_paths):
+            request.photos.append(RequestPhoto(url=f"/api/v1/uploads/{path}", sort_order=order))
+
+        self.db.commit()
+        return self.get_own(user, request_id)
 
     def cancel(self, user: User, request_id: int, *, reason: str | None) -> ServiceRequest:
         request = self.get_own(user, request_id)
