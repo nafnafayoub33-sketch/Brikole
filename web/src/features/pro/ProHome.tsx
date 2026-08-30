@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import { Navigate } from 'react-router-dom'
 
 import { useMyProfile } from '@/data/pro'
+import { Dashboard } from '@/features/pro/Dashboard'
+import type { Language } from '@/lib/i18n'
 import { ErrorState } from '@/ui/ErrorState'
-import { NotBuilt } from '@/ui/NotBuilt'
 import { Skeleton } from '@/ui/Skeleton'
 
 /**
@@ -13,6 +15,7 @@ import { Skeleton } from '@/ui/Skeleton'
  * closed the tab lands back on the form rather than on an empty dashboard.
  */
 export function ProHome() {
+  const { i18n } = useTranslation()
   const profile = useMyProfile()
 
   if (profile.isPending) {
@@ -34,5 +37,5 @@ export function ProHome() {
   if (!profile.data) return <Navigate to="/pro/onboarding" replace />
   if (profile.data.status !== 'approved') return <Navigate to="/pro/status" replace />
 
-  return <NotBuilt screen="M3" />
+  return <Dashboard profile={profile.data} language={i18n.language as Language} />
 }

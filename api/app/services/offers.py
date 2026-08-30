@@ -134,6 +134,13 @@ class OfferService:
         ):
             raise DomainError(ErrorCode.NOT_FOUND)
 
+        # The same gate as the feed, and for the same reason. Without it a
+        # blocked tradesman reaches this page by URL or by a stale link, writes
+        # a price, and is refused only on send — which is the exact thing the
+        # feed closing was meant to prevent. Charged against *this* request's
+        # fee, since we have the request in hand.
+        self._require_credit(profile, self.fee_for_request(request))
+
         return profile, request, self.repo.his_offer_on(profile.id, request_id)
 
     def send_offer(self, user: User, request_id: int, payload: NewOfferIn) -> Offer:

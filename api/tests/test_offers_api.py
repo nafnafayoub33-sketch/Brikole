@@ -274,6 +274,35 @@ def test_somebody_elses_offer_cannot_be_withdrawn(client, api_prefix, db, stage)
     assert response.status_code == 404
 
 
+def test_an_empty_balance_closes_the_request_page_too(client, api_prefix, db, stage):
+    """Reachable by URL or a stale link. Without this he reads it, writes a
+    price, and is refused only on send — the exact thing closing the feed was
+    meant to prevent."""
+    account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
+    account.balance_centimes = 0
+    db.commit()
+
+    response = detail(client, api_prefix, stage)
+    assert response.status_code == 402
+    assert response.json()["code"] == "insufficient_credit"
+
+
+def test_he_can_still_withdraw_once_his_balance_runs_out(client, api_prefix, db, stage):
+    """His offer outlives his credit, and an offer he can no longer edit is one
+    he must still be able to take back."""
+    offer_id = send(client, api_prefix, stage).json()["id"]
+
+    account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
+    account.balance_centimes = 0
+    db.commit()
+
+    response = client.post(
+        f"{api_prefix}/pro/offers/{offer_id}/withdraw", headers=auth(stage["token"])
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "withdrawn"
+
+
 # -- M6 ------------------------------------------------------------------
 
 

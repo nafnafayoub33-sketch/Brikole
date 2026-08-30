@@ -16,7 +16,10 @@ import { RequestPage } from '@/features/client/RequestPage'
 import { RequestsPage } from '@/features/client/RequestsPage'
 import { ReviewPage } from '@/features/client/ReviewPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
+import { FeedPage } from '@/features/pro/FeedPage'
 import { ProJobsPage } from '@/features/pro/JobsPage'
+import { MyOffersPage } from '@/features/pro/MyOffersPage'
+import { OfferPage } from '@/features/pro/OfferPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
 import { LandingPage } from '@/features/public/LandingPage'
@@ -80,9 +83,9 @@ export function AppRoutes() {
         <Route index element={<ProHome />} />
         <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="status" element={<StatusPage />} />
-        <Route path="requests" element={<NotBuilt screen="M4" />} />
-        <Route path="requests/:id" element={<NotBuilt screen="M5" />} />
-        <Route path="offers" element={<NotBuilt screen="M6" />} />
+        <Route path="requests" element={<FeedPage />} />
+        <Route path="requests/:id" element={<OfferPage />} />
+        <Route path="offers" element={<MyOffersPage />} />
         <Route path="jobs" element={<ProJobsPage />} />
         <Route path="profile" element={<NotBuilt screen="M8" />} />
         <Route path="credit" element={<NotBuilt screen="M9" />} />

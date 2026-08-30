@@ -261,6 +261,12 @@ with wet or dirty hands. Minimum touch target 52px.
 - **States:** already offered (form becomes the current offer, editable) · request
   taken by someone else · request cancelled · insufficient credit → blocked with
   the top-up CTA
+- **The credit gate is on this page too, not only on the feed.** M4 closing is
+  not enough: he reaches M5 by a URL, a stale link or the back button, and a
+  page that lets him write a price and refuses only on send is precisely what
+  closing the feed was meant to prevent.
+- **Withdrawing therefore also lives on M6.** His offer outlives his credit, and
+  an offer he can no longer edit is one he must still be able to take back.
 - → M6
 
 ### M6 · My offers — `/pro/offers`
