@@ -19,6 +19,7 @@ import { PartyCard } from '@/ui/PartyCard'
 import { Skeleton } from '@/ui/Skeleton'
 import { Stars } from '@/ui/Stars'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
+import { cn } from '@/ui/cn'
 
 /**
  * C4 — the work, once somebody is doing it.
@@ -69,6 +70,12 @@ export function JobPage() {
 
   const data = job.data
   const live = data.status !== 'confirmed' && data.status !== 'cancelled'
+  // A dispute outlives the job: the argument usually starts *after* the work
+  // is done and confirmed, which is precisely when `live` is already false.
+  // The API decides whether the window has closed; the screen does not
+  // duplicate that number and drift from it.
+  const disputable =
+    data.status === 'in_progress' || data.status === 'done' || data.status === 'confirmed'
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -229,12 +236,18 @@ export function JobPage() {
               </label>
             </ConfirmButton>
 
-            {/* C8 is not built. Saying so beats a button that goes nowhere. */}
-            <p className="self-center text-sm text-fg-subtle">{t('job.disputeSoon')}</p>
           </div>
 
           {cancel.isError && <ErrorState error={cancel.error} />}
         </footer>
+      )}
+
+      {disputable && (
+        <div className={cn('border-border pt-6', live ? 'mt-6' : 'mt-10 border-t')}>
+          <Link to={`/client/jobs/${data.id}/dispute`}>
+            <Button variant="ghost">{t('job.dispute')}</Button>
+          </Link>
+        </div>
       )}
     </div>
   )

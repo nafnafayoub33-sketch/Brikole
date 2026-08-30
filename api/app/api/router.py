@@ -10,6 +10,7 @@ from app.api.routes import (
     auth,
     catalog,
     credit,
+    disputes,
     health,
     jobs,
     offers,
@@ -24,6 +25,7 @@ api_router.include_router(health.router)
 api_router.include_router(auth.router)
 api_router.include_router(catalog.router)
 api_router.include_router(credit.router)
+api_router.include_router(disputes.router)
 api_router.include_router(providers.router)
 api_router.include_router(uploads.router)
 api_router.include_router(pro.router)

@@ -10,13 +10,18 @@ import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
 import { FinancePage } from '@/features/admin/FinancePage'
+import { DisputePage as ClientDisputePage } from '@/features/client/DisputePage'
 import { JobPage } from '@/features/client/JobPage'
 import { JobsPage } from '@/features/client/JobsPage'
+import { MyDisputePage } from '@/features/client/MyDisputePage'
+import { MyDisputesPage } from '@/features/client/MyDisputesPage'
 import { NewRequestPage } from '@/features/client/NewRequestPage'
 import { RequestPage } from '@/features/client/RequestPage'
 import { RequestsPage } from '@/features/client/RequestsPage'
 import { ReviewPage } from '@/features/client/ReviewPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
+import { DisputePage as ModDisputePage } from '@/features/mod/DisputePage'
+import { DisputesPage } from '@/features/mod/DisputesPage'
 import { CreditPage } from '@/features/pro/CreditPage'
 import { FeedPage } from '@/features/pro/FeedPage'
 import { ProJobsPage } from '@/features/pro/JobsPage'
@@ -69,7 +74,9 @@ export function AppRoutes() {
         <Route path="jobs" element={<JobsPage />} />
         <Route path="jobs/:id" element={<JobPage />} />
         <Route path="jobs/:id/review" element={<ReviewPage />} />
-        <Route path="jobs/:id/dispute" element={<NotBuilt screen="C8" />} />
+        <Route path="jobs/:id/dispute" element={<ClientDisputePage />} />
+        <Route path="disputes" element={<MyDisputesPage />} />
+        <Route path="disputes/:id" element={<MyDisputePage />} />
         <Route path="notifications" element={<NotBuilt screen="C6" />} />
         <Route path="account" element={<NotBuilt screen="C7" />} />
       </Route>
@@ -92,6 +99,8 @@ export function AppRoutes() {
         <Route path="profile" element={<NotBuilt screen="M8" />} />
         <Route path="credit" element={<CreditPage />} />
         <Route path="reviews" element={<NotBuilt screen="M10" />} />
+        <Route path="disputes" element={<MyDisputesPage />} />
+        <Route path="disputes/:id" element={<MyDisputePage />} />
         <Route path="account" element={<NotBuilt screen="M11" />} />
       </Route>
 
@@ -106,8 +115,8 @@ export function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="disputes" replace />} />
-        <Route path="disputes" element={<NotBuilt screen="D1" />} />
-        <Route path="disputes/:id" element={<NotBuilt screen="D2" />} />
+        <Route path="disputes" element={<DisputesPage />} />
+        <Route path="disputes/:id" element={<ModDisputePage />} />
         <Route path="reports" element={<NotBuilt screen="D3" />} />
         <Route path="account" element={<NotBuilt screen="D4" />} />
       </Route>

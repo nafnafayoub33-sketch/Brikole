@@ -195,6 +195,13 @@ Trades & cities · Settings · Audit log.
   disagreement, behaviour), description, evidence photos
 - **Important:** the platform holds no money, so this is never a refund request.
   The screen says so before submission.
+- **The "this is not a refund" paragraph comes before the form**, not after
+  submission. Somebody arriving here expecting the job price back leaves angrier
+  than he came, and telling him at the end is too late.
+- **The link to this screen lives on C4 for as long as the API allows a dispute**
+  — including on a confirmed job, which is when the argument usually starts. The
+  window itself is the API's to enforce; the screen does not duplicate the number
+  and drift from it.
 - **States:** already open · outside the 7-day window
 - → D1's queue
 
@@ -323,6 +330,9 @@ with wet or dirty hands. Minimum touch target 52px.
 - **Contents:** queue with tabs — open, assigned to me, resolved. Each row: job,
   reason, who opened it, age (over 48h is flagged)
 - **Actions:** claim · open
+- **Oldest first**, and unclaimed for over 48 hours is flagged: two people are
+  waiting on every row, and a queue where everything looks equally urgent is not
+  a queue.
 - **States:** loading · empty ("Nothing to arbitrate") · error with retry
 
 ### D2 · Dispute — `/mod/disputes/:id` ⭐
@@ -334,6 +344,17 @@ with wet or dirty hands. Minimum touch target 52px.
   to the tradesman
 - **Important:** the moderator sees the **lead fee** because he can refund it, and
   nothing else about money — no balance, no top-up, no revenue.
+- **The refund is legal on one verdict only** — client at fault. The fee bought a
+  real introduction to a real job; it comes back when the person who wasted it
+  was on the other side, and not as a way of splitting the difference. The tick
+  is locked on every other verdict and clears if he switches away from it, so a
+  stale tick never reaches an API that would reject it.
+- **Internal notes are filtered in the service**, not in this screen: a note a
+  moderator wrote about somebody must not be one forgotten `if` away from that
+  person reading it.
+- **Both parties read the same case**, minus the lead fee, the internal notes and
+  the decision panel — passed in as a prop rather than decided by a role check
+  inside the component, so a party's copy cannot grow moderator powers.
 - **States:** unclaimed (read-only until claimed) · already resolved (read-only with
   who decided and when) · a party has been deleted
 

@@ -22,6 +22,7 @@ class AuditAction:
     PROVIDER_REJECTED = "provider.rejected"
     TOPUP_APPROVED = "topup.approved"
     TOPUP_REJECTED = "topup.rejected"
+    DISPUTE_RESOLVED = "dispute.resolved"
 
 
 def record(
