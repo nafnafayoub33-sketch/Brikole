@@ -9,7 +9,9 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
+import { AuditPage } from '@/features/admin/AuditPage'
 import { FinancePage } from '@/features/admin/FinancePage'
+import { SettingsPage } from '@/features/admin/SettingsPage'
 import { DisputePage as ClientDisputePage } from '@/features/client/DisputePage'
 import { JobPage } from '@/features/client/JobPage'
 import { JobsPage } from '@/features/client/JobsPage'
@@ -136,8 +138,8 @@ export function AppRoutes() {
         <Route path="requests" element={<NotBuilt screen="A4" />} />
         <Route path="finance" element={<FinancePage />} />
         <Route path="catalog" element={<NotBuilt screen="A6" />} />
-        <Route path="settings" element={<NotBuilt screen="A7" />} />
-        <Route path="audit" element={<NotBuilt screen="A8" />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="audit" element={<AuditPage />} />
         <Route path="staff" element={<NotBuilt screen="A9" />} />
       </Route>
 

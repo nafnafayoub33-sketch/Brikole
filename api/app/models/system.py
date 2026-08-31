@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import NotificationKind
 from app.models.base import Base, PkMixin, TimestampMixin, enum_column
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class PlatformSetting(TimestampMixin, Base):
@@ -24,6 +27,10 @@ class PlatformSetting(TimestampMixin, Base):
     updated_by_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+    #: Who last changed it, for A7's "changed by" line. One way: nobody wants
+    #: every setting a person ever touched loaded with that person.
+    updated_by: Mapped[User | None] = relationship(lazy="selectin")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<PlatformSetting {self.key}>"

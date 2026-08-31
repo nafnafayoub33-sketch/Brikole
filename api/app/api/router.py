@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     admin,
+    admin_settings,
     approvals,
     auth,
     catalog,
@@ -33,4 +34,5 @@ api_router.include_router(requests.router)
 api_router.include_router(jobs.router)
 api_router.include_router(offers.router)
 api_router.include_router(admin.router)
+api_router.include_router(admin_settings.router)
 api_router.include_router(approvals.router)

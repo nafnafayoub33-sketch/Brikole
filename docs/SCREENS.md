@@ -434,10 +434,29 @@ with wet or dirty hands. Minimum touch target 52px.
 - Default lead fee, free leads for a new tradesman, request cap per client, offer
   expiry, dispute window, the platform's bank details shown at M9, and maintenance
   mode. Every change is audited with the old and the new value.
+- **Every value is bounded in `core/settings_rules.py`**, not trusted. A lead fee
+  of zero makes the business free and a request cap of zero makes the product
+  unusable — both are one mistyped digit away on this form.
+- **A bad value rejects the whole batch.** Saving three fields and refusing the
+  fourth leaves the admin guessing which of them landed.
+- **A partial write only touches the keys it was sent**, so two admins editing
+  different halves of the screen do not overwrite each other.
+- **Writing the same value is not a line in the log.** An audit trail padded with
+  no-ops is one nobody reads.
+- A key nobody has ever changed shows as the shipped default rather than
+  implying somebody chose it.
 
 ### A8 · Audit log — `/admin/audit`
 - Who did what to whom and when, filterable by actor, action and target. Read-only,
   and never deletable from the UI.
+- **Read-only by construction:** the API has no write and no delete on this path,
+  so there is nothing for the screen to offer even if somebody wanted it.
+- **The filters are built from what the log contains**, so a choice never returns
+  nothing because the screen invented the option.
+- **A deleted actor takes his name, not his record** — the row survives with the
+  account marked gone, which is the entire point of an audit log.
+- Object-valued settings are diffed key by key rather than printed as two JSON
+  blobs, on the one screen whose whole job is being readable.
 
 ### A9 · Staff — `/admin/staff`
 - Moderators and admins, what they have handled, and deactivation.
