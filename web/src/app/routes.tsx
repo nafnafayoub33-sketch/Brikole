@@ -24,6 +24,7 @@ import { ReviewPage } from '@/features/client/ReviewPage'
 import { OnboardingPage } from '@/features/pro/OnboardingPage'
 import { DisputePage as ModDisputePage } from '@/features/mod/DisputePage'
 import { DisputesPage } from '@/features/mod/DisputesPage'
+import { ReportsPage } from '@/features/mod/ReportsPage'
 import { CreditPage } from '@/features/pro/CreditPage'
 import { FeedPage } from '@/features/pro/FeedPage'
 import { ProJobsPage } from '@/features/pro/JobsPage'
@@ -120,7 +121,7 @@ export function AppRoutes() {
         <Route index element={<Navigate to="disputes" replace />} />
         <Route path="disputes" element={<DisputesPage />} />
         <Route path="disputes/:id" element={<ModDisputePage />} />
-        <Route path="reports" element={<NotBuilt screen="D3" />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="account" element={<NotBuilt screen="D4" />} />
       </Route>
 

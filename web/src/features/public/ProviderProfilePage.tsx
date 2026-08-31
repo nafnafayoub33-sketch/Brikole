@@ -11,6 +11,7 @@ import { Card } from '@/ui/Card'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
+import { ReportButton } from '@/ui/ReportButton'
 import { Skeleton } from '@/ui/Skeleton'
 import { Stars } from '@/ui/Stars'
 import { cn } from '@/ui/cn'
@@ -193,6 +194,13 @@ export function ProviderProfilePage() {
             )}
           </div>
 
+          <ReportButton
+            targetType="provider_profile"
+            targetId={person.id}
+            label={t('report.reportProfile')}
+            className="mt-8"
+          />
+
           {reviews.isSuccess && pages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-4">
               <Button
@@ -365,6 +373,13 @@ function ReviewRow({ review, language }: { review: Review; language: Language })
           </p>
         </div>
       )}
+
+      <ReportButton
+        targetType="review"
+        targetId={review.id}
+        label={t('report.reportReview')}
+        className="mt-3"
+      />
     </article>
   )
 }

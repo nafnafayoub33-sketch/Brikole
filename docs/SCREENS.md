@@ -372,8 +372,26 @@ with wet or dirty hands. Minimum touch target 52px.
   who decided and when) · a party has been deleted
 
 ### D3 · Reports — `/mod/reports`
-- Reported profiles, reviews and messages. Actions: dismiss, hide the content, warn,
+- Reported profiles and reviews. Actions: dismiss, hide the content, warn,
   suspend 48h. Anything heavier is escalated to an admin.
+- **The ceiling is in the vocabulary, not remembered in code.** `ReportOutcome`
+  has four values and none of them closes an account; a moderator cannot reach
+  one because there is nothing to reach.
+- **The content is quoted on the card.** A moderator judges the thing complained
+  about, not the complaint about it.
+- **Only a review can be hidden.** A profile is not a piece of content: taking a
+  tradesman off the market is a suspension, and calling it "hidden" would leave
+  nothing on the record saying why he vanished.
+- **Nobody reports their own content**, and nobody files the same complaint
+  twice — the second is the same complaint, and staff act rather than queue one
+  for themselves.
+- **"Other" requires a sentence.** Every other reason carries its own meaning;
+  that one carries none, and a moderator cannot act on it.
+- Other open reports on the same target are counted on the card: three
+  complaints about one review is a different decision from one.
+- **States:** loading · empty ("Nothing to review") · error with retry ·
+  already handled by another moderator → 409 rather than a second suspension.
+- Handling writes an `audit_log` row with the outcome and the reason.
 
 ### D4 · Account — `/mod/account`
 
