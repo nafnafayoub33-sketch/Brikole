@@ -8,12 +8,15 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from app.core.enums import Role
 from app.deps import CurrentUser, DbSession, require_roles
+from app.models.base import utcnow
 from app.models.system import AuditLog, PlatformSetting
 from app.models.user import User
 from app.repositories.audit import AuditRepository
+from app.repositories.stats import StatsRepository
 from app.schemas.admin_settings import (
     AuditEntryOut,
     AuditFiltersOut,
+    PlatformStatsOut,
     SettingOut,
     SettingsOut,
     UpdateSettingsIn,
@@ -26,6 +29,22 @@ router = APIRouter(
     tags=["admin"],
     dependencies=[Depends(require_roles(Role.ADMIN))],
 )
+
+
+@router.get("/stats", response_model=PlatformStatsOut)
+def platform_stats(db: DbSession) -> PlatformStatsOut:
+    """A1. Every figure is a query over the rows it describes, not a cache."""
+    stats = StatsRepository(db).platform(now=utcnow())
+    return PlatformStatsOut(
+        new_users_this_week=stats.new_users_this_week,
+        new_users_last_week=stats.new_users_last_week,
+        providers_awaiting_approval=stats.providers_awaiting_approval,
+        open_requests=stats.open_requests,
+        jobs_done=stats.jobs_done,
+        leads_sold=stats.leads_sold,
+        leads_value_centimes=stats.leads_value_centimes,
+        disputes_open=stats.disputes_open,
+    )
 
 
 @router.get("/settings", response_model=SettingsOut)

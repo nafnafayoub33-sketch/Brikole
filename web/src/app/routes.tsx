@@ -10,6 +10,7 @@ import { RegisterPage } from '@/features/auth/RegisterPage'
 import { BrowsePage } from '@/features/public/BrowsePage'
 import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
 import { AuditPage } from '@/features/admin/AuditPage'
+import { DashboardPage } from '@/features/admin/DashboardPage'
 import { FinancePage } from '@/features/admin/FinancePage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
 import { DisputePage as ClientDisputePage } from '@/features/client/DisputePage'
@@ -133,7 +134,7 @@ export function AppRoutes() {
           </RequireRole>
         }
       >
-        <Route index element={<NotBuilt screen="A1" />} />
+        <Route index element={<DashboardPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="users" element={<NotBuilt screen="A3" />} />
         <Route path="requests" element={<NotBuilt screen="A4" />} />

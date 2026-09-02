@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import random
 import sys
-from datetime import timedelta
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from app.core.enums import (
     ProviderStatus,
     RequestStatus,
     Role,
+    TransactionType,
     Urgency,
 )
 from app.core.money import dirhams
@@ -36,7 +38,7 @@ from app.core.security import hash_password
 from app.db import session_scope
 from app.models.base import utcnow
 from app.models.catalog import City, Trade
-from app.models.credit import CreditAccount
+from app.models.credit import CreditAccount, CreditTransaction
 from app.models.job import Job, Review
 from app.models.offer import Offer
 from app.models.provider import ProviderProfile, provider_trades
@@ -763,6 +765,191 @@ def backfill_request_details(db: Session, *, rng: random.Random) -> int:
     return fixed
 
 
+TOPUP_CHUNK_CENTIMES = 10_000  # 100,00 DH — what a tradesman actually puts in
+
+
+def backfill_lead_ledger(db: Session) -> int:
+    """Write the ledger behind every lead the seed sold, and the money for it.
+
+    `seed_history` froze a fee onto each accepted offer but never moved any
+    money, so A1 read "1073 jobs done, 1 lead sold" — a balance with nothing
+    behind it, which is the one thing this codebase does not allow.
+
+    Replaying only the fees would be just as false: it would drive most demo
+    tradesmen hundreds of dirhams under, when the balance the seed picked is
+    what they have *today*, after a year of buying leads. So each provider's
+    history is rebuilt whole — the top-ups that funded the leads, then the
+    leads — and it lands exactly on the balance already on the account.
+
+    A frozen fee of zero is a free lead, and gets the row that says so.
+    """
+    # An account that already has rows has a history somebody lived — a top-up
+    # approved on A5, a lead charged by a real acceptance. The seed rewrites
+    # nothing: it only fills in accounts that never got a ledger at all.
+    used = set(db.execute(select(CreditTransaction.account_id).distinct()).scalars())
+    accounts = {
+        account.provider_id: account
+        for account in db.execute(select(CreditAccount)).scalars()
+        if account.id not in used
+    }
+
+    history: dict[int, list[tuple[Job, Offer]]] = defaultdict(list)
+    for job, offer in db.execute(
+        select(Job, Offer).join(Offer, Offer.id == Job.offer_id).order_by(Job.created_at, Job.id)
+    ).all():
+        if job.provider_id in accounts:
+            history[job.provider_id].append((job, offer))
+
+    written = 0
+    for provider_id, jobs in history.items():
+        account = accounts[provider_id]
+        written += _replay_provider_ledger(db, account=account, jobs=jobs)
+
+    db.flush()
+    return written
+
+
+def _replay_provider_ledger(
+    db: Session, *, account: CreditAccount, jobs: list[tuple[Job, Offer]]
+) -> int:
+    """One tradesman's year of credit, ending on the balance he has now."""
+    target = account.balance_centimes
+    fees = [offer.lead_fee_centimes or 0 for _, offer in jobs]
+    funding = sum(fees) + target
+
+    # Round chunks, the last one carrying the remainder, so the running total
+    # lands on `target` to the centime.
+    chunks = [TOPUP_CHUNK_CENTIMES] * (funding // TOPUP_CHUNK_CENTIMES)
+    if funding % TOPUP_CHUNK_CENTIMES:
+        chunks.append(funding % TOPUP_CHUNK_CENTIMES)
+
+    running = 0
+    pending = list(chunks)
+    written = 0
+
+    def top_up(at: datetime) -> None:
+        nonlocal running, written
+        amount = pending.pop(0)
+        running += amount
+        db.add(
+            CreditTransaction(
+                account_id=account.id,
+                type=TransactionType.TOPUP,
+                amount_centimes=amount,
+                balance_after_centimes=running,
+                reason="topup_approved",
+                created_at=at,
+            )
+        )
+        written += 1
+
+    for (job, offer), fee in zip(jobs, fees, strict=True):
+        while pending and running < fee:
+            top_up(job.created_at - timedelta(minutes=1))
+
+        if fee == 0:
+            charge_type, amount, reason = TransactionType.FREE_LEAD, 0, "free_lead"
+        else:
+            charge_type, amount, reason = TransactionType.LEAD_FEE, -fee, "offer_accepted"
+
+        running += amount
+        db.add(
+            CreditTransaction(
+                account_id=account.id,
+                type=charge_type,
+                amount_centimes=amount,
+                balance_after_centimes=running,
+                reason=reason,
+                offer_id=offer.id,
+                job_id=job.id,
+                created_at=job.created_at,
+            )
+        )
+        written += 1
+
+    # Whatever funded today's balance rather than a past lead.
+    last = jobs[-1][0].created_at + timedelta(minutes=1)
+    while pending:
+        top_up(last)
+
+    account.balance_centimes = running
+    return written
+
+
+def backfill_signup_dates(db: Session, *, rng: random.Random) -> int:
+    """Give every demo account a sign-up date it could plausibly have.
+
+    The seed stamps `created_at` with the hour it ran, so A1 read "344 new
+    sign-ups this week, first week" above a year of finished jobs — everyone
+    joined on Tuesday and did work in July. Growth is the number a dashboard
+    is read for; it cannot be an artefact of when the seed last ran.
+
+    So each account is moved back to somewhere between the start of the demo's
+    history and the first thing that account did, and the ones with nothing
+    behind them are spread across the same year. Nobody ends up younger than
+    their own first job.
+    """
+    horizon = db.execute(select(func.min(Job.created_at))).scalar()
+    if horizon is None:
+        return 0
+    horizon -= timedelta(days=30)
+    first: dict[int, datetime] = {}
+
+    def note(user_id: int, at: datetime) -> None:
+        if user_id not in first or at < first[user_id]:
+            first[user_id] = at
+
+    for user_id, at in db.execute(select(ServiceRequest.client_id, ServiceRequest.created_at)):
+        note(user_id, at)
+    for user_id, at in db.execute(select(Job.client_id, Job.created_at)):
+        note(user_id, at)
+    for user_id, at in db.execute(
+        select(ProviderProfile.user_id, Offer.created_at).join(
+            Offer, Offer.provider_id == ProviderProfile.id
+        )
+    ):
+        note(user_id, at)
+
+    now = utcnow().replace(tzinfo=None)
+    # Anything stamped after the last job in the database was stamped by a seed
+    # run, not lived. Anchoring to that instead of to "now" keeps this stable:
+    # a second run finds the dates already spread and leaves them alone.
+    latest = db.execute(select(func.max(Job.created_at))).scalar() or now
+
+    moved = 0
+    for user in db.execute(select(User)).scalars():
+        ceiling = first.get(user.id)
+
+        if ceiling is None:
+            # Nothing behind this account, so no date is truer than another —
+            # but all of them landing on the hour the seed ran is a growth
+            # spike that never happened. Spread them over the last two months,
+            # and leave alone anything already outside the seed's own window so
+            # a second run doesn't reshuffle the first.
+            if user.created_at < latest - timedelta(days=2):
+                continue
+            span = int((now - horizon).total_seconds())
+            # Up to today, not up to the last job: somebody can sign up and not
+            # have hired anyone yet — the applications waiting on A2 are exactly
+            # that. Skewed towards today, because a platform that grows signs up
+            # more people this month than it did a year ago.
+            user.created_at = horizon + timedelta(seconds=int(span * rng.random() ** 0.4))
+            moved += 1
+            continue
+
+        # The defect is exact and so is the test for it: an account younger
+        # than its own first job.
+        if user.created_at <= ceiling or ceiling <= horizon:
+            continue
+
+        span = int((ceiling - horizon).total_seconds())
+        user.created_at = horizon + timedelta(seconds=rng.randint(0, span))
+        moved += 1
+
+    db.flush()
+    return moved
+
+
 def backfill_offer_counts(db: Session) -> int:
     """Make `offers_count` equal the offers that actually exist.
 
@@ -1032,6 +1219,8 @@ def main() -> int:
         comments = refresh_comments(db, rng=rng)
         live = seed_live_requests(db, rng=rng)
         fixed = backfill_offer_counts(db)
+        ledger = backfill_lead_ledger(db)
+        joined = backfill_signup_dates(db, rng=rng)
         details = backfill_request_details(db, rng=rng)
         waiting = seed_pending_applications(db, total=6, rng=rng)
 
@@ -1039,6 +1228,7 @@ def main() -> int:
     print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
     print(f"live requests for the demo client: {live}, offer counts fixed: {fixed}")
     print(f"request descriptions and addresses filled in: {details}")
+    print(f"credit ledger rows written: {ledger}, sign-up dates spread: {joined}")
     print(f"applications waiting for an admin: {waiting}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0

@@ -400,8 +400,17 @@ with wet or dirty hands. Minimum touch target 52px.
 # 5. Admin — `/admin`
 
 ### A1 · Dashboard — `/admin`
-- New users this week, tradesmen awaiting approval, open requests, jobs done,
-  leads sold and their value, disputes open. Every tile links to its screen.
+- One hero figure — what the platform took, all of it lead fees — over a row of
+  stat tiles: new sign-ups this week against last week, tradesmen awaiting
+  approval, open disputes, open requests, jobs done. Numbers, not charts: a
+  one-bar chart of "1 dispute" says less than the number does.
+- The two tiles that are somebody waiting (approvals, disputes) carry a status
+  colour, and only while there is something to do. The colour never says it
+  alone — each carries the words beside it.
+- A tile links to its screen only when that screen exists. Approvals and
+  disputes do; sign-ups and open requests get theirs with A3 and A4.
+- Every figure is counted live at read time. Nothing here is a stored total, so
+  nothing here can drift away from the tables it claims to describe.
 
 ### A2 · Approvals — `/admin/approvals` ⭐
 - **Contents:** the queue on one side, the application on the other. The detail

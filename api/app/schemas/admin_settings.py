@@ -52,3 +52,17 @@ class AuditFiltersOut(ApiModel):
 
     actions: list[str]
     target_types: list[str]
+
+
+class PlatformStatsOut(ApiModel):
+    """A1. Seven numbers, each linking to the screen it came from."""
+
+    new_users_this_week: int
+    new_users_last_week: int
+    providers_awaiting_approval: int
+    open_requests: int
+    jobs_done: int
+    leads_sold: int
+    #: What the platform actually took. The one figure it lives on.
+    leads_value_centimes: int
+    disputes_open: int

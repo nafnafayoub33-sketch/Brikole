@@ -87,3 +87,25 @@ export function useAuditFilters() {
     staleTime: 60_000,
   })
 }
+
+export interface PlatformStats {
+  new_users_this_week: number
+  new_users_last_week: number
+  providers_awaiting_approval: number
+  open_requests: number
+  jobs_done: number
+  leads_sold: number
+  /** What the platform actually took. The one figure it lives on. */
+  leads_value_centimes: number
+  disputes_open: number
+}
+
+export const STATS_KEY = ['admin', 'stats'] as const
+
+export function useStats() {
+  return useQuery({
+    queryKey: STATS_KEY,
+    queryFn: () => api<PlatformStats>('/admin/stats'),
+    staleTime: 30_000,
+  })
+}
