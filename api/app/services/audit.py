@@ -25,6 +25,10 @@ class AuditAction:
     DISPUTE_RESOLVED = "dispute.resolved"
     SETTING_CHANGED = "setting.changed"
     REPORT_HANDLED = "report.handled"
+    USER_SUSPENDED = "user.suspended"
+    USER_REACTIVATED = "user.reactivated"
+    USER_ROLE_CHANGED = "user.role_changed"
+    STAFF_CREATED = "staff.created"
 
 
 def record(

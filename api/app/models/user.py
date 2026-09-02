@@ -12,6 +12,7 @@ from app.core.enums import Role, UserStatus
 from app.models.base import Base, PkMixin, TimestampMixin, enum_column
 
 if TYPE_CHECKING:
+    from app.models.catalog import City
     from app.models.provider import ProviderProfile
 
 
@@ -44,6 +45,8 @@ class User(PkMixin, TimestampMixin, Base):
     # Suspension. `suspended_until` null on a suspended account means permanent.
     suspended_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     suspension_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    city: Mapped[City | None] = relationship(lazy="joined")
 
     provider_profile: Mapped[ProviderProfile | None] = relationship(
         back_populates="user",

@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/data/client'
 import { CREDIT_KEY } from '@/data/offers'
 import { CREDIT_PAGE_KEY } from '@/data/credit'
-import type { Page } from '@/data/types'
+import type { DisputeStatus } from '@/data/disputes'
+import type { City, Page, ProviderStatus, Role, UserStatus } from '@/data/types'
 
 export interface Setting {
   key: string
@@ -156,4 +157,143 @@ export function useStats() {
     queryFn: () => api<PlatformStats>('/admin/stats'),
     staleTime: 30_000,
   })
+}
+
+// -- A3: accounts -----------------------------------------------------------
+
+export interface AdminUserRow {
+  id: number
+  phone: string
+  full_name: string
+  role: Role
+  status: UserStatus
+  avatar_url: string | null
+  city: City | null
+  created_at: string
+  last_login_at: string | null
+  suspended_until: string | null
+  /** Set when this account also has a tradesman profile. */
+  provider_status: ProviderStatus | null
+}
+
+export interface AdminUserProvider {
+  id: number
+  status: ProviderStatus
+  headline: string | null
+  rating_avg: number
+  rating_count: number
+  jobs_done: number
+  balance_centimes: number
+  free_leads_left: number
+}
+
+export interface AdminUserActivity {
+  requests_posted: number
+  jobs_hired: number
+  spent_centimes: number
+  reviews_written: number
+  offers_sent: number
+  jobs_worked: number
+  disputes_opened: number
+  disputes_against: number
+  staff_actions: number
+}
+
+export interface AdminUserDispute {
+  id: number
+  job_id: number
+  status: DisputeStatus
+  reason: string
+  created_at: string
+  opened_by_them: boolean
+}
+
+export interface AdminUser extends AdminUserRow {
+  language: string
+  suspension_reason: string | null
+  locked_until: string | null
+  provider: AdminUserProvider | null
+  activity: AdminUserActivity
+  disputes: AdminUserDispute[]
+}
+
+export interface UserFilters {
+  q: string
+  role: Role | null
+  status: UserStatus | null
+}
+
+/** Enough to scan without scrolling forever, and the pager reaches the rest. */
+export const USERS_PER_PAGE = 25
+
+export const USERS_KEY = ['admin', 'users'] as const
+
+export function useUsers(filters: UserFilters, page: number) {
+  const params = new URLSearchParams({
+    per_page: String(USERS_PER_PAGE),
+    page: String(page),
+  })
+  if (filters.q.trim()) params.set('q', filters.q.trim())
+  if (filters.role) params.set('role', filters.role)
+  if (filters.status) params.set('status', filters.status)
+
+  return useQuery({
+    queryKey: [...USERS_KEY, filters.q.trim(), filters.role, filters.status, page],
+    queryFn: () => api<Page<AdminUserRow>>(`/admin/users?${params}`),
+    staleTime: 15_000,
+    // Paging with the previous page still on screen: the list must not blink
+    // back to a skeleton every time somebody steps through it.
+    placeholderData: (previous) => previous,
+  })
+}
+
+export function useUser(userId: number | null) {
+  return useQuery({
+    queryKey: [...USERS_KEY, 'one', userId],
+    queryFn: () => api<AdminUser>(`/admin/users/${userId}`),
+    enabled: userId !== null,
+  })
+}
+
+/** Every action here changes somebody's account, so every one of them also
+ *  lands in the audit log — which A8 reads. */
+function useAccountAction<TVariables>(
+  send: (variables: TVariables) => Promise<AdminUser>,
+) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: send,
+    onSuccess: (user) => {
+      queryClient.setQueryData([...USERS_KEY, 'one', user.id], user)
+      void queryClient.invalidateQueries({ queryKey: USERS_KEY })
+      void queryClient.invalidateQueries({ queryKey: AUDIT_KEY })
+      void queryClient.invalidateQueries({ queryKey: STATS_KEY })
+    },
+  })
+}
+
+export function useSuspendUser() {
+  return useAccountAction(
+    ({ id, days, reason }: { id: number; days: number | null; reason: string }) =>
+      api<AdminUser>(`/admin/users/${id}/suspend`, { method: 'POST', body: { days, reason } }),
+  )
+}
+
+export function useReactivateUser() {
+  return useAccountAction(({ id }: { id: number }) =>
+    api<AdminUser>(`/admin/users/${id}/reactivate`, { method: 'POST' }),
+  )
+}
+
+export function useChangeRole() {
+  return useAccountAction(({ id, role }: { id: number; role: Role }) =>
+    api<AdminUser>(`/admin/users/${id}/role`, { method: 'PATCH', body: { role } }),
+  )
+}
+
+export function useCreateStaff() {
+  return useAccountAction(
+    (body: { phone: string; full_name: string; password: string; role: Role }) =>
+      api<AdminUser>('/admin/users', { method: 'POST', body }),
+  )
 }

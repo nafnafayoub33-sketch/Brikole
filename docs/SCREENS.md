@@ -454,12 +454,37 @@ Rules this screen keeps:
 - Writes an `audit_log` row either way, carrying the status before and after and,
   for a rejection, the reason.
 
-### A3 · Users — `/admin/users`
-- Search by phone or name, filter by role and status. The detail shows the account,
-  its activity, and its disputes.
-- **Actions:** suspend · reactivate · **change role** (the only place a role can
-  change) · create a moderator or an admin
-- All of it confirmed, all of it audited.
+### A3 · Users — `/admin/users` ⭐
+The screen with the most power on the platform. The list on one side, the account
+on the other; the list scrolls inside itself and pages, so the detail — the thing
+being read — never leaves the screen.
+
+- **Finding somebody.** One box for a name or a phone. Numbers are stored E.164
+  and typed nationally, so `0612…` finds `+212612…`. Filters for role and status;
+  deleted accounts stay out unless asked for by name.
+- **The detail.** The account, then what it has done on *both* sides of the
+  marketplace — requests posted, tradesmen hired, money spent, reviews written,
+  offers sent, jobs worked — because a client and a tradesman are the same row and
+  a zero is a fact worth showing. Then the tradesman profile with its wallet, and
+  every dispute the person is in, either side, each linking to D2.
+- **Actions:** suspend (7 / 30 / 90 days, or permanent — permanent is an admin's
+  alone) · reactivate · **change role**, the only place a role changes · create a
+  moderator or an admin.
+- All of it confirmed, all of it audited: the change and its audit row are written
+  in the same transaction, with the before/after diff and the reason.
+
+What it refuses, and why:
+- **An admin acting on his own account.** Suspending yourself locks you out of the
+  screen that would undo it. The screen says so on your own row rather than
+  letting you press and read an error.
+- **Making somebody a tradesman from a dropdown.** A m3allem is an application
+  with a CIN behind it (M1, then A2); a role set here would be a provider with no
+  profile, invisible to every screen that expects one.
+- **Changing the role of somebody who has that profile.** His offers, jobs and
+  credit all hang off it. The role panel says this instead of offering a select.
+- **Taking the last active admin.** Kept as the platform's invariant even though
+  A3 cannot reach it: the caller is always an active admin, so the self-refusal
+  gets there first.
 
 ### A4 · Requests and jobs — `/admin/requests`
 - Read-only browser with filters, for support questions. Cancelling a request from

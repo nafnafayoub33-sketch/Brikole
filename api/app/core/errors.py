@@ -37,6 +37,12 @@ class ErrorCode(StrEnum):
     NOT_FOUND = "not_found"
     CONFLICT = "conflict"
 
+    # staff acting on an account (A3)
+    SELF_ACTION_REFUSED = "self_action_refused"
+    LAST_ADMIN = "last_admin"
+    ROLE_NOT_ASSIGNABLE = "role_not_assignable"
+    PROVIDER_ROLE_LOCKED = "provider_role_locked"
+
     # money
     INSUFFICIENT_CREDIT = "insufficient_credit"
     AMOUNT_INVALID = "amount_invalid"
@@ -49,6 +55,11 @@ _STATUS: dict[ErrorCode, int] = {
     ErrorCode.AMOUNT_INVALID: 422,
     ErrorCode.PHONE_TAKEN: 409,
     ErrorCode.CONFLICT: 409,
+    # Well-formed, and the caller is allowed — the world says no.
+    ErrorCode.SELF_ACTION_REFUSED: 409,
+    ErrorCode.LAST_ADMIN: 409,
+    ErrorCode.ROLE_NOT_ASSIGNABLE: 409,
+    ErrorCode.PROVIDER_ROLE_LOCKED: 409,
     ErrorCode.INVALID_CREDENTIALS: 401,
     ErrorCode.NOT_AUTHENTICATED: 401,
     ErrorCode.TOKEN_INVALID: 401,
