@@ -400,13 +400,38 @@ with wet or dirty hands. Minimum touch target 52px.
 # 5. Admin — `/admin`
 
 ### A1 · Dashboard — `/admin`
-- One hero figure — what the platform took, all of it lead fees — over a row of
-  stat tiles: new sign-ups this week against last week, tradesmen awaiting
-  approval, open disputes, open requests, jobs done. Numbers, not charts: a
-  one-bar chart of "1 dispute" says less than the number does.
-- The two tiles that are somebody waiting (approvals, disputes) carry a status
-  colour, and only while there is something to do. The colour never says it
-  alone — each carries the words beside it.
+One hero figure, a row of stat tiles, then four panels that answer the questions
+the tiles raise.
+
+- **The headline row.** What the platform took, all of it lead fees, as the one
+  figure the view leads with; then new sign-ups this week against last week,
+  tradesmen awaiting approval, open disputes, open requests, jobs done.
+- **Where the money is.** The price of the jobs under dispute — *between a
+  client and a tradesman, never on the platform's books; there is no escrow
+  before phase 3* — kept apart from the lead fees charged on those same jobs,
+  which is the platform's own exposure and refundable by a moderator. Then
+  top-ups waiting for A5, credit bought and not spent, and the debt carried by
+  tradesmen whose wallet went under. Every row says whose money it is.
+- **Revenue month by month.** Thirteen months, so the same month last year is on
+  the chart. Quiet months are drawn as quiet months, never dropped.
+- **Cities and trades.** Jobs done and money taken, ranked. Past about seven
+  categories colour stops carrying identity, so this is a table with the bar
+  drawn in it — and the tail it does not show is named and totalled rather than
+  quietly dropped.
+- **From request to finished work.** Published → answered → hired → confirmed.
+  The one panel that says whether the marketplace works: a request nobody
+  answers is the failure the platform exists to prevent.
+
+Rules this screen keeps:
+- Numbers where a number is the answer, charts only where the shape is. One
+  measure per chart, one hue, no second y-axis, and no bar coloured by its own
+  value — length already says how much.
+- Ordered steps (the funnel) take a one-hue ordinal ramp; nominal categories
+  (cities, trades) all take the same hue.
+- The trend is pinned left-to-right in Arabic. Time is a number line, and this
+  codebase already keeps numbers, prices and dates reading that way.
+- Status colour only where somebody is waiting, and never alone — the words are
+  in the badge beside it.
 - A tile links to its screen only when that screen exists. Approvals and
   disputes do; sign-ups and open requests get theirs with A3 and A4.
 - Every figure is counted live at read time. Nothing here is a stored total, so

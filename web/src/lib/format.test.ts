@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatBudget, formatDH, formatDirhams, formatPhone } from '@/lib/format'
+import {
+  formatBudget,
+  formatCount,
+  formatDH,
+  formatDirhams,
+  formatMonth,
+  formatMonthLong,
+  formatPhone,
+} from '@/lib/format'
 
 describe('formatDH', () => {
   it('renders centimes as dirhams with two decimals', () => {
@@ -48,5 +56,34 @@ describe('formatPhone', () => {
 
   it('leaves anything that is not a Moroccan E.164 number alone', () => {
     expect(formatPhone('0612345678')).toBe('0612345678')
+  })
+})
+
+describe('formatCount', () => {
+  it('groups a count the same way a price is grouped', () => {
+    // Two separators on one screen — `1,073` beside `10.700 DH` — reads as two
+    // different numbering systems.
+    for (const language of ['ar', 'fr', 'en'] as const) {
+      const grouping = formatCount(1073, language).replace(/\d/g, '')
+      const price = formatDirhams(107_300, language).replace(/[\d\s]|DH/g, '')
+      expect(grouping).toBe(price)
+    }
+  })
+
+  it('keeps Latin digits in Arabic', () => {
+    expect(formatCount(1073, 'ar')).toMatch(/1.073/)
+  })
+})
+
+describe('formatMonth', () => {
+  it('names the month the key actually says', () => {
+    expect(formatMonth('2026-01', 'en')).toMatch(/Jan/)
+    expect(formatMonth('2026-12', 'en')).toMatch(/Dec/)
+  })
+
+  it('does not roll back a month in a negative timezone', () => {
+    // `new Date('2026-08')` is UTC midnight; read locally, west of Greenwich
+    // that is July, and the column would carry the wrong label.
+    expect(formatMonthLong('2026-08', 'en')).toMatch(/August 2026/)
   })
 })

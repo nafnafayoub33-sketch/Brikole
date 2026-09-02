@@ -35,6 +35,13 @@ export function formatDirhams(centimes: number, language: Language = 'ar'): stri
   return `${formatted} DH`
 }
 
+/** A plain count: `1073` → `1.073`, in the same grouping the prices use.
+ *  Two separators on one screen — `1,073` beside `10.700 DH` — reads as two
+ *  different numbering systems, which is exactly what it is. */
+export function formatCount(value: number, language: Language = 'ar'): string {
+  return new Intl.NumberFormat(localeFor(language)).format(value)
+}
+
 /** A range, for a budget. One side missing still reads correctly. */
 export function formatBudget(
   minCentimes: number | null,
@@ -85,6 +92,29 @@ export function formatRelative(iso: string, language: Language = 'ar', now = Dat
   if (absolute < HOUR) return relative.format(Math.round(elapsed / MINUTE), 'minute')
   if (absolute < DAY) return relative.format(Math.round(elapsed / HOUR), 'hour')
   return relative.format(Math.round(elapsed / DAY), 'day')
+}
+
+/** `2026-08` → `août`, or `غشت`. The A1 trend labels its columns with these. */
+export function formatMonth(month: string, language: Language = 'ar'): string {
+  return new Intl.DateTimeFormat(localeFor(language), { month: 'short' }).format(
+    firstOfMonth(month),
+  )
+}
+
+/** The same month with its year, for a tooltip where the column has no axis. */
+export function formatMonthLong(month: string, language: Language = 'ar'): string {
+  return new Intl.DateTimeFormat(localeFor(language), {
+    month: 'long',
+    year: 'numeric',
+  }).format(firstOfMonth(month))
+}
+
+/** `2026-08` is a month, not a day. UTC, so a negative offset cannot roll it
+ *  back into July and label the column with the wrong month. */
+function firstOfMonth(month: string): Date {
+  const year = Number(month.slice(0, 4))
+  const index = Number(month.slice(5, 7))
+  return new Date(Date.UTC(year, index - 1, 1))
 }
 
 function localeFor(language: Language): string {

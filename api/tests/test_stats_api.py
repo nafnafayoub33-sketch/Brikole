@@ -13,14 +13,16 @@ from app.core.enums import (
     ProviderStatus,
     RequestStatus,
     Role,
+    TopupStatus,
     TransactionType,
 )
 from app.core.money import dirhams
 from app.models.base import utcnow
-from app.models.credit import CreditAccount, CreditTransaction
+from app.models.credit import CreditAccount, CreditTransaction, TopupRequest
 from app.models.dispute import Dispute
 from app.models.job import Job
 from app.models.offer import Offer
+from app.models.provider import ProviderProfile
 from app.models.request import ServiceRequest
 from tests.test_auth_api import auth, make_user, token_for
 from tests.test_catalog_api import make_city, make_trade
@@ -211,3 +213,156 @@ def test_only_an_admin_sees_the_dashboard(client, api_prefix, db, stage):
         assert response.status_code == 403
 
     assert client.get(f"{api_prefix}/admin/stats").status_code == 401
+
+
+# -- money ------------------------------------------------------------------
+
+
+def test_the_job_price_in_dispute_is_not_the_platforms_money(client, api_prefix, stage):
+    """No escrow before phase 3: the price is argued over between two people.
+
+    What the platform itself has at stake on that job is the lead fee it
+    charged, and the two are reported apart so nobody reads the wrong one as
+    revenue at risk.
+    """
+    money = stats(client, api_prefix, stage).json()["money"]
+
+    assert money["in_dispute_centimes"] == dirhams(300)
+    assert money["disputed_lead_fees_centimes"] == dirhams(10)
+    assert money["taken_centimes"] == dirhams(10)
+
+
+def test_a_job_with_two_disputes_counts_its_price_once(client, api_prefix, db, stage):
+    """Summing over disputes instead of jobs would double it."""
+    first = db.query(Dispute).one()
+    db.add(
+        Dispute(
+            job_id=first.job_id,
+            opened_by_id=first.against_id,
+            against_id=first.opened_by_id,
+            reason="no_show",
+            description="Il n'a jamais ouvert la porte.",
+            status=DisputeStatus.OPEN,
+        )
+    )
+    db.commit()
+
+    body = stats(client, api_prefix, stage).json()
+    assert body["disputes_open"] == 2
+    assert body["money"]["in_dispute_centimes"] == dirhams(300)
+
+
+def test_a_resolved_dispute_releases_the_money(client, api_prefix, db, stage):
+    db.query(Dispute).one().status = DisputeStatus.RESOLVED
+    db.commit()
+
+    money = stats(client, api_prefix, stage).json()["money"]
+    assert money["in_dispute_centimes"] == 0
+    assert money["disputed_lead_fees_centimes"] == 0
+
+
+def test_credit_held_and_credit_owed_are_two_different_facts(client, api_prefix, db, stage):
+    """One is the platform's float; the other is a debt it is carrying."""
+    account = db.query(CreditAccount).one()
+    body = stats(client, api_prefix, stage).json()
+    assert body["money"]["credit_held_centimes"] == dirhams(40)
+    assert body["money"]["credit_owed_centimes"] == 0
+
+    account.balance_centimes = -dirhams(15)
+    db.commit()
+
+    money = stats(client, api_prefix, stage).json()["money"]
+    assert money["credit_held_centimes"] == 0
+    assert money["credit_owed_centimes"] == dirhams(15)
+
+
+def test_a_topup_nobody_approved_is_not_money_yet(client, api_prefix, db, stage):
+    """It is a bank transfer somebody claims to have made. A5 decides."""
+    provider = db.query(ProviderProfile).order_by(ProviderProfile.id).first()
+    assert provider is not None
+    db.add(
+        TopupRequest(
+            provider_id=provider.id,
+            amount_centimes=dirhams(200),
+            reference="VIR-2026-08-31",
+            status=TopupStatus.PENDING,
+        )
+    )
+    db.commit()
+
+    money = stats(client, api_prefix, stage).json()["money"]
+    assert money["topups_waiting"] == 1
+    assert money["topups_waiting_centimes"] == dirhams(200)
+    assert money["credit_held_centimes"] == dirhams(40), "not on any balance yet"
+
+
+# -- the trend --------------------------------------------------------------
+
+
+def test_the_trend_carries_every_month_including_the_quiet_ones(client, api_prefix, stage):
+    """A month with no work is a fact. Dropping the row closes the gap and
+    draws a line that never happened."""
+    months = stats(client, api_prefix, stage).json()["months"]
+
+    assert len(months) == 13
+    assert months == sorted(months, key=lambda point: point["month"])
+    assert all(len(point["month"]) == 7 for point in months)
+    assert sum(point["leads"] for point in months) == 2
+
+
+# -- where the work is ------------------------------------------------------
+
+
+def test_cities_carry_their_own_three_names(client, api_prefix, stage):
+    """An admin adds a city at runtime, so its name is data, not a key."""
+    city = stats(client, api_prefix, stage).json()["cities"][0]
+    assert city["slug"] == "casablanca"
+    assert city["name_ar"] and city["name_fr"] and city["name_en"]
+
+
+def test_a_city_reports_work_money_and_who_is_there(client, api_prefix, stage):
+    city = stats(client, api_prefix, stage).json()["cities"][0]
+
+    assert city["jobs"] == 1
+    assert city["value_centimes"] == dirhams(10)
+    assert city["open_requests"] == 1
+    assert city["providers"] == 1, "the pending application is not a tradesman yet"
+
+
+def test_the_busiest_place_comes_first(client, api_prefix, db, stage):
+    quiet = make_city(db, "agadir")
+    db.commit()
+
+    cities = stats(client, api_prefix, stage).json()["cities"]
+    assert [row["slug"] for row in cities] == ["casablanca", quiet.slug]
+
+
+def test_a_trade_counts_the_same_way_a_city_does(client, api_prefix, stage):
+    trade = stats(client, api_prefix, stage).json()["trades"][0]
+    assert trade["slug"] == "plombier"
+    assert trade["jobs"] == 1
+    assert trade["value_centimes"] == dirhams(10)
+
+
+# -- does the marketplace work ----------------------------------------------
+
+
+def test_the_funnel_narrows_at_every_step(client, api_prefix, stage):
+    funnel = stats(client, api_prefix, stage).json()["funnel"]
+
+    assert funnel["requests"] == 2
+    assert funnel["with_offer"] == 1
+    assert funnel["hired"] == 1
+    assert funnel["confirmed"] == 1
+    assert (
+        funnel["requests"] >= funnel["with_offer"] >= funnel["hired"] >= funnel["confirmed"]
+    )
+
+
+def test_a_withdrawn_offer_never_answered_the_request(client, api_prefix, db, stage):
+    """The tradesman took it back, so nobody replied. That is the failure the
+    platform exists to prevent, and it has to show as one."""
+    db.query(Offer).one().status = OfferStatus.WITHDRAWN
+    db.commit()
+
+    assert stats(client, api_prefix, stage).json()["funnel"]["with_offer"] == 0

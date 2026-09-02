@@ -54,8 +54,57 @@ class AuditFiltersOut(ApiModel):
     target_types: list[str]
 
 
+class MoneyOut(ApiModel):
+    """A1. Where the money is, and whose it is."""
+
+    taken_centimes: int
+    #: Between a client and a tradesman, never on the platform's books: there
+    #: is no escrow before phase 3.
+    in_dispute_centimes: int
+    #: What the platform charged on those same jobs, and could be told to
+    #: refund. This is its own exposure; the line above is not.
+    disputed_lead_fees_centimes: int
+    topups_waiting: int
+    topups_waiting_centimes: int
+    credit_held_centimes: int
+    credit_owed_centimes: int
+
+
+class MonthOut(ApiModel):
+    """One month of the trend. `2026-08`."""
+
+    month: str
+    leads: int
+    value_centimes: int
+    jobs: int
+
+
+class PlaceOut(ApiModel):
+    """A city or a trade. Names travel in all three languages — an admin adds
+    them at runtime (A6), so they cannot be translation keys."""
+
+    id: int
+    slug: str
+    name_ar: str
+    name_fr: str
+    name_en: str
+    jobs: int
+    open_requests: int
+    providers: int
+    value_centimes: int
+
+
+class FunnelOut(ApiModel):
+    """Published -> answered -> hired -> confirmed. Each step is a subset."""
+
+    requests: int
+    with_offer: int
+    hired: int
+    confirmed: int
+
+
 class PlatformStatsOut(ApiModel):
-    """A1. Seven numbers, each linking to the screen it came from."""
+    """A1. Every figure counted at read time, never a stored total."""
 
     new_users_this_week: int
     new_users_last_week: int
@@ -66,3 +115,10 @@ class PlatformStatsOut(ApiModel):
     #: What the platform actually took. The one figure it lives on.
     leads_value_centimes: int
     disputes_open: int
+
+    money: MoneyOut
+    #: Oldest first, gaps included: a quiet month is a fact, not a missing row.
+    months: list[MonthOut]
+    cities: list[PlaceOut]
+    trades: list[PlaceOut]
+    funnel: FunnelOut

@@ -68,6 +68,19 @@
   --focus: var(--navy-500);
   --overlay: rgb(6 22 38 / 0.5);
 
+  /* data — one hue, because every chart on A1 plots one measure. Magnitude is
+     bar length; colour is not spending a second channel to repeat it. The
+     ordinal ramp is for the funnel alone, where the steps have an order.
+     Validated: light end 2.51:1 on this surface, monotone lightness, one hue. */
+  --chart-fill: var(--navy-500);
+  --chart-fill-hover: var(--navy-600);
+  --chart-track: var(--navy-100);
+  --chart-grid: var(--border);
+  --chart-step-1: var(--navy-300);
+  --chart-step-2: var(--navy-400);
+  --chart-step-3: var(--navy-500);
+  --chart-step-4: var(--navy-700);
+
   /* depth — light and cool, never a grey smudge */
   --shadow-sm: 0 1px 2px rgb(11 18 32 / 0.06), 0 1px 1px rgb(11 18 32 / 0.04);
   --shadow-md: 0 4px 16px rgb(11 18 32 / 0.08);
@@ -110,6 +123,17 @@
     --focus: #7fb3e8;
     --overlay: rgb(0 0 0 / 0.65);
 
+    /* The same hue stepped for the dark surface, and the ramp's anchor flipped:
+       on a dark ground more is lighter. Not an automatic inversion. */
+    --chart-fill: #5aa0dc;
+    --chart-fill-hover: #7bb6e8;
+    --chart-track: #17324f;
+    --chart-grid: #1c2a42;
+    --chart-step-1: #1e6096;
+    --chart-step-2: #3d82ba;
+    --chart-step-3: #5aa0dc;
+    --chart-step-4: #9cc6ea;
+
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45);
     --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.55);
@@ -150,6 +174,15 @@
 
   --focus: #7fb3e8;
   --overlay: rgb(0 0 0 / 0.65);
+
+  --chart-fill: #5aa0dc;
+  --chart-fill-hover: #7bb6e8;
+  --chart-track: #17324f;
+  --chart-grid: #1c2a42;
+  --chart-step-1: #1e6096;
+  --chart-step-2: #3d82ba;
+  --chart-step-3: #5aa0dc;
+  --chart-step-4: #9cc6ea;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 16px rgb(0 0 0 / 0.45);
@@ -201,6 +234,15 @@
 
   --color-focus: var(--focus);
   --color-overlay: var(--overlay);
+
+  --color-chart-fill: var(--chart-fill);
+  --color-chart-fill-hover: var(--chart-fill-hover);
+  --color-chart-track: var(--chart-track);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-step-1: var(--chart-step-1);
+  --color-chart-step-2: var(--chart-step-2);
+  --color-chart-step-3: var(--chart-step-3);
+  --color-chart-step-4: var(--chart-step-4);
 
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);

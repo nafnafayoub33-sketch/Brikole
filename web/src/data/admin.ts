@@ -88,6 +88,47 @@ export function useAuditFilters() {
   })
 }
 
+export interface PlatformMoney {
+  taken_centimes: number
+  /** Argued over between a client and a tradesman. The platform holds none of
+   *  it — there is no escrow before phase 3. */
+  in_dispute_centimes: number
+  /** What the platform charged on those same jobs, and could be told to
+   *  refund. This one is its own exposure; the line above is not. */
+  disputed_lead_fees_centimes: number
+  topups_waiting: number
+  topups_waiting_centimes: number
+  credit_held_centimes: number
+  credit_owed_centimes: number
+}
+
+export interface StatsMonth {
+  /** `2026-08`. */
+  month: string
+  leads: number
+  value_centimes: number
+  jobs: number
+}
+
+export interface StatsPlace {
+  id: number
+  slug: string
+  name_ar: string
+  name_fr: string
+  name_en: string
+  jobs: number
+  open_requests: number
+  providers: number
+  value_centimes: number
+}
+
+export interface StatsFunnel {
+  requests: number
+  with_offer: number
+  hired: number
+  confirmed: number
+}
+
 export interface PlatformStats {
   new_users_this_week: number
   new_users_last_week: number
@@ -98,6 +139,13 @@ export interface PlatformStats {
   /** What the platform actually took. The one figure it lives on. */
   leads_value_centimes: number
   disputes_open: number
+
+  money: PlatformMoney
+  /** Oldest first, gaps included: a quiet month is a fact, not a missing row. */
+  months: StatsMonth[]
+  cities: StatsPlace[]
+  trades: StatsPlace[]
+  funnel: StatsFunnel
 }
 
 export const STATS_KEY = ['admin', 'stats'] as const

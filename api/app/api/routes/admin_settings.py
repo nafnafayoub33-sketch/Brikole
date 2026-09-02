@@ -12,10 +12,14 @@ from app.models.base import utcnow
 from app.models.system import AuditLog, PlatformSetting
 from app.models.user import User
 from app.repositories.audit import AuditRepository
-from app.repositories.stats import StatsRepository
+from app.repositories.stats import PlaceRow, StatsRepository
 from app.schemas.admin_settings import (
     AuditEntryOut,
     AuditFiltersOut,
+    FunnelOut,
+    MoneyOut,
+    MonthOut,
+    PlaceOut,
     PlatformStatsOut,
     SettingOut,
     SettingsOut,
@@ -33,8 +37,18 @@ router = APIRouter(
 
 @router.get("/stats", response_model=PlatformStatsOut)
 def platform_stats(db: DbSession) -> PlatformStatsOut:
-    """A1. Every figure is a query over the rows it describes, not a cache."""
-    stats = StatsRepository(db).platform(now=utcnow())
+    """A1. Every figure is a query over the rows it describes, not a cache.
+
+    The whole dashboard in one response. The alternative — a request per panel
+    — buys nothing here: the counts are small, and a screen that reads six
+    endpoints can show six different moments of the same platform.
+    """
+    now = utcnow()
+    repository = StatsRepository(db)
+    stats = repository.platform(now=now)
+    money = repository.money()
+    funnel = repository.funnel()
+
     return PlatformStatsOut(
         new_users_this_week=stats.new_users_this_week,
         new_users_last_week=stats.new_users_last_week,
@@ -44,6 +58,46 @@ def platform_stats(db: DbSession) -> PlatformStatsOut:
         leads_sold=stats.leads_sold,
         leads_value_centimes=stats.leads_value_centimes,
         disputes_open=stats.disputes_open,
+        money=MoneyOut(
+            taken_centimes=money.taken_centimes,
+            in_dispute_centimes=money.in_dispute_centimes,
+            disputed_lead_fees_centimes=money.disputed_lead_fees_centimes,
+            topups_waiting=money.topups_waiting,
+            topups_waiting_centimes=money.topups_waiting_centimes,
+            credit_held_centimes=money.credit_held_centimes,
+            credit_owed_centimes=money.credit_owed_centimes,
+        ),
+        months=[
+            MonthOut(
+                month=point.month,
+                leads=point.leads,
+                value_centimes=point.value_centimes,
+                jobs=point.jobs,
+            )
+            for point in repository.months(now=now)
+        ],
+        cities=[_place(row) for row in repository.cities()],
+        trades=[_place(row) for row in repository.trades()],
+        funnel=FunnelOut(
+            requests=funnel.requests,
+            with_offer=funnel.with_offer,
+            hired=funnel.hired,
+            confirmed=funnel.confirmed,
+        ),
+    )
+
+
+def _place(row: PlaceRow) -> PlaceOut:
+    return PlaceOut(
+        id=row.id,
+        slug=row.slug,
+        name_ar=row.name_ar,
+        name_fr=row.name_fr,
+        name_en=row.name_en,
+        jobs=row.jobs,
+        open_requests=row.open_requests,
+        providers=row.providers,
+        value_centimes=row.value_centimes,
     )
 
 
