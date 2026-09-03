@@ -132,9 +132,8 @@ Trades & cities · Settings · Audit log.
 - **The address is on the page but the note under it says who else sees it** —
   only the tradesman whose offer he accepts. Nothing on a screen should leave him
   guessing what he has just published.
-- **Actions:** accept an offer (confirms, and says plainly that the others will be
-  declined) · decline one · cancel the request (confirms) · edit while no offer
-  has arrived
+- **Actions:** open the chat on an offer (→ C9; commits to nothing) · decline one ·
+  cancel the request (confirms) · edit while no offer has arrived
 - **Declining one is its own action**, not a side effect of accepting another. A
   client who knows a price is wrong should be able to clear it out of his list,
   and a tradesman is better off learning it now than sitting in a queue that has
@@ -152,13 +151,11 @@ Trades & cities · Settings · Audit log.
   arrive within a few hours") · request cancelled · request already assigned
   (offers become read-only) · accept failed because someone else's offer was
   withdrawn
-- **Accepting is one transaction.** The offer becomes accepted, every other
-  pending offer on the request is declined in the same breath, the request goes
-  to `assigned`, the job is created, and the lead fee is charged to the
-  tradesman with its ledger row — or none of it happened. The button says out
-  loud what it does to the offers he is not choosing, because it is the one
-  press in the client's flow he cannot take back.
-- → C4
+- **There is no accept button any more.** Tapping an offer opens C9, where the
+  two of them talk and settle on a price. The job is created when they have
+  **both** signed the same terms — see C9 — so nothing on this screen is
+  irreversible and nobody is charged for a press.
+- → C9
 
 ### C4 · Job — `/client/jobs/:id`
 - **Contents:** status timeline (accepted → started → finished → confirmed), the
@@ -168,15 +165,17 @@ Trades & cities · Settings · Audit log.
   dispute
 - **States:** each timeline state · cancelled by the tradesman (with his reason) ·
   awaiting your confirmation (the primary action) · auto-confirmed after 7 days
-- **A short balance never blocks the client.** If the accepted tradesman cannot
-  cover the lead fee, the balance is allowed to go negative and the debt is
-  recorded: the client pressed the button, he cannot see or fix the tradesman's
-  wallet, and refusing there would break the only flow that earns the platform
-  anything. The guard belongs upstream — M5 refuses to send an offer without
-  credit — so a shortfall here is the narrow case where the fee changed, or the
-  balance was spent, between the offer and its acceptance.
-- **The tradesman's phone number appears here and nowhere earlier.** Before an
-  offer is accepted nobody has agreed to anything.
+- **A short balance never blocks the deal.** If the tradesman cannot cover the
+  lead fee when the second signature lands, the balance goes negative and the
+  debt is recorded: two people have just agreed on a price, and refusing there
+  would break the only flow that earns the platform anything. The guard belongs
+  upstream — M5 refuses to send an offer without credit — so a shortfall here is
+  the narrow case where the fee changed, or the balance was spent, while they
+  were talking.
+- **The tradesman's phone number appears here and nowhere earlier.** Not on P3,
+  not on C3, and not in the chat that led here — C9 strikes contacts out of
+  every message until this screen exists. Before both have signed, nobody has
+  agreed to anything and the platform has not been paid.
 - **Who may move it where is not symmetric.** The tradesman starts and finishes;
   the client confirms. Neither owns the other's arrow, and a client cannot cancel
   once the work is done — that is what C8 is for.
@@ -336,6 +335,57 @@ with wet or dirty hands. Minimum touch target 52px.
 - Same as C7, plus notification preferences per trade.
 
 ---
+
+### C9 · Chat with a tradesman — `/client/requests/:id/chats/:conversationId` ⭐
+The screen the business model lives on. M12 is the same thread from the other
+side, and the same component draws both.
+
+- **Opening it commits to nothing.** No offer changes status, no request is
+  assigned, no money moves. The client can open one on every offer he has and
+  close none of them.
+- **No phone number, no email, no link.** Numbers, emails, links and `@handles`
+  are struck out of every message in both directions — including numbers spelled
+  in words, in French or Darija, and typed in Arabic-Indic digits. The message
+  is still delivered with the contact struck out: refusing it outright would
+  teach people to write `zero six` and lose the sentence around it. The struck
+  contact is **never stored**; only a count of how many were removed, which is
+  what a moderator reads as somebody trying repeatedly.
+- **This is a deterrent, not a wall.** Somebody determined can photograph a
+  business card. The wall is structural and elsewhere: the tradesman's phone
+  number is on the job payload and on nothing that exists before one.
+- **The deal card** carries the price and what it covers, and the two
+  signatures. Either side may move either field; **every change clears both
+  signatures, including the changer's own**, so nobody is ever held to a number
+  he did not see.
+- **A signature is against a version, not against "the deal".** Signing a
+  version that has moved is refused rather than silently upgraded — the screen
+  he pressed on was showing a different price.
+- **The second signature is the acceptance**, and it is the same single
+  transaction the old button was: the offer wins, every other pending offer is
+  declined, the request goes to `assigned`, the job is created **at the price
+  they agreed**, and the lead fee is charged with its ledger row — or none of it
+  happened.
+- **Messages carry photos and documents** (JPEG, PNG, WebP, PDF) in the private
+  bucket, readable only by the two people in that conversation — membership is
+  asked of the database, never inferred from the folder name.
+- **Once the job exists the redaction stops.** The platform has been paid and
+  they have each other's number on C4; striking one out here would be
+  superstition.
+- **States:** loading · empty thread · talking · one signature · both signed
+  (the deal card is replaced by a link to the job) · the offer was withdrawn
+- → C4
+
+### M12 · Chat with a client — `/pro/chats/:conversationId` ⭐
+The same thread as C9, from the tradesman's side, drawn by the same component.
+
+- **He cannot start one.** The client chooses who to talk to; an unsolicited
+  thread from every tradesman who saw the request is a spam channel. M6 links
+  into the thread once the client has opened it, and says "no reply yet" when
+  he has not.
+- The rest is C9: the same deal card, the same two signatures, the same rule
+  about contacts, and the same second signature that creates the job and
+  charges him the lead fee — at the price he actually agreed to, not the one he
+  guessed before seeing the photos.
 
 # 4. Moderator — `/mod`
 

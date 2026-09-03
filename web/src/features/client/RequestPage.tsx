@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { useAcceptOffer } from '@/data/jobs'
+import { useOpenConversation } from '@/data/chat'
 import {
   useCancelRequest,
   useDeclineOffer,
@@ -403,7 +403,7 @@ function OfferCard({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const accept = useAcceptOffer()
+  const openChat = useOpenConversation()
   const decline = useDeclineOffer()
   const provider = offer.provider
 
@@ -502,20 +502,20 @@ function OfferCard({
 
       {!readOnly && offer.status === 'pending' && (
         <div className="mt-4 flex flex-wrap items-start gap-4 border-t border-border pt-4">
-          {/* The one irreversible press in the client's flow, so it says out
-              loud what it does to the offers he is not choosing. */}
-          <ConfirmButton
-            label={t('requests.accept')}
-            question={t('requests.acceptConfirm')}
-            confirmLabel={t('requests.acceptYes')}
-            loading={accept.isPending}
-            onConfirm={() =>
-              accept.mutate(
-                { requestId, offerId: offer.id },
-                { onSuccess: (job) => navigate(`/client/jobs/${job.id}`) },
-              )
+          {/* No longer an irreversible press. Opening the chat commits him to
+              nothing: he asks his questions, they settle on a price, and the
+              job is created only when they have both signed the same one. */}
+          <Button
+            loading={openChat.isPending}
+            onClick={() =>
+              openChat.mutate(offer.id, {
+                onSuccess: (conversation) =>
+                  navigate(`/client/requests/${requestId}/chats/${conversation.id}`),
+              })
             }
-          />
+          >
+            {t('requests.talk')}
+          </Button>
 
           {/* Turning one down without choosing another: a tradesman is better
               off knowing now than sitting in a queue that has moved past him. */}
@@ -529,9 +529,9 @@ function OfferCard({
             onConfirm={() => decline.mutate({ requestId, offerId: offer.id })}
           />
 
-          {(accept.isError || decline.isError) && (
+          {(openChat.isError || decline.isError) && (
             <div className="w-full">
-              <ErrorState error={accept.error ?? decline.error} />
+              <ErrorState error={openChat.error ?? decline.error} />
             </div>
           )}
         </div>

@@ -59,6 +59,9 @@ class MyOfferOut(ApiModel):
     responded_at: datetime | None
     #: Set once accepted, so M6 can link to the job it became.
     job_id: int | None = None
+    #: Set once the client has opened the thread on it. Null means nobody has
+    #: replied yet, which M6 says rather than showing a link to nothing.
+    conversation_id: int | None = None
 
 
 class FeedRequestOut(ApiModel):

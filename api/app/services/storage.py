@@ -30,6 +30,9 @@ SIGNATURES: dict[str, tuple[bytes, ...]] = {
     "jpg": (b"\xff\xd8\xff",),
     "png": (b"\x89PNG\r\n\x1a\n",),
     "webp": (b"RIFF",),
+    # The chat carries documents as well as photos — a quote, a plan, a
+    # warranty. Nothing executable: the list is the allowlist.
+    "pdf": (b"%PDF-",),
 }
 
 MAX_BYTES = 5 * 1024 * 1024

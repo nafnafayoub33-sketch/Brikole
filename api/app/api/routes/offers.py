@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
 
 from app.core.enums import Role, Urgency
 from app.deps import CurrentUser, DbSession, require_roles
+from app.models.conversation import Conversation
 from app.models.offer import Offer
 from app.models.request import ServiceRequest
 from app.schemas.catalog import TradeOut
@@ -118,8 +120,21 @@ def list_offers(
 ) -> Page[MyOfferOut]:
     """M6."""
     rows, jobs, total = OfferService(db).list_his(user, page=page, per_page=per_page)
+    # One query for the whole page rather than one per row: M6 is the screen a
+    # tradesman refreshes while he waits.
+    threads = {
+        int(offer_id): int(conversation_id)
+        for offer_id, conversation_id in db.execute(
+            select(Conversation.offer_id, Conversation.id).where(
+                Conversation.offer_id.in_([offer.id for offer in rows])
+            )
+        )
+    }
     return Page[MyOfferOut](
-        items=[_mine(offer, offer.request, jobs.get(offer.id)) for offer in rows],
+        items=[
+            _mine(offer, offer.request, jobs.get(offer.id), threads.get(offer.id))
+            for offer in rows
+        ],
         total=total,
         page=page,
         per_page=per_page,
@@ -145,7 +160,12 @@ def _row(request: ServiceRequest, mine: Offer | None) -> FeedRequestOut:
     )
 
 
-def _mine(offer: Offer, request: ServiceRequest, job_id: int | None = None) -> MyOfferOut:
+def _mine(
+    offer: Offer,
+    request: ServiceRequest,
+    job_id: int | None = None,
+    conversation_id: int | None = None,
+) -> MyOfferOut:
     return MyOfferOut(
         id=offer.id,
         request_id=offer.request_id,
@@ -159,6 +179,7 @@ def _mine(offer: Offer, request: ServiceRequest, job_id: int | None = None) -> M
         created_at=offer.created_at,
         responded_at=offer.responded_at,
         job_id=job_id,
+        conversation_id=conversation_id,
     )
 
 

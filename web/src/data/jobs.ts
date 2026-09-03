@@ -88,11 +88,10 @@ function useJobMutation<TVariables>(
   })
 }
 
-export function useAcceptOffer() {
-  return useJobMutation(({ requestId, offerId }: { requestId: number; offerId: number }) =>
-    api<Job>(`/client/requests/${requestId}/offers/${offerId}/accept`, { method: 'POST' }),
-  )
-}
+// There is no `useAcceptOffer` any more, and no route behind one. A job is
+// created when both sides have signed the same terms in the chat — see
+// `useAgree` in `data/chat` — so the client no longer commits to a price
+// before he has been able to ask a single question about it.
 
 export function useStartJob() {
   return useJobMutation((jobId: number) => api<Job>(`/jobs/${jobId}/start`, { method: 'POST' }))

@@ -67,11 +67,28 @@ class JobService:
 
     # -- the acceptance --------------------------------------------------
 
-    def accept_offer(self, user: User, request_id: int, offer_id: int) -> Job:
+    def accept_offer(
+        self,
+        user: User,
+        request_id: int,
+        offer_id: int,
+        *,
+        price_centimes: int | None = None,
+        commit: bool = True,
+    ) -> Job:
         """One transaction, or none of it.
 
         Order matters only in that the charge is last: everything before it is
         cheap to undo, and a failure after money moved is the expensive kind.
+
+        `price_centimes` is what the two of them settled on in the chat, which
+        is not always what the tradesman first offered — he quoted before he
+        had seen the photos. Left out, the offer's own price stands.
+
+        `commit=False` lets the handshake seal the conversation and create the
+        job in one transaction rather than two: the conversation service is the
+        only caller that needs it, and a job that exists while its conversation
+        still says "waiting" is exactly the split this avoids.
         """
         request = self._own_open_request(user, request_id)
 
@@ -106,13 +123,18 @@ class JobService:
             offer_id=offer.id,
             client_id=user.id,
             provider_id=provider.id,
-            agreed_price_centimes=offer.price_centimes,
+            agreed_price_centimes=(
+                offer.price_centimes if price_centimes is None else price_centimes
+            ),
             status=JobStatus.ASSIGNED,
         )
         self.db.add(job)
         self.db.flush()
 
         offer.lead_fee_centimes = self._charge_lead_fee(provider, offer, job, request)
+
+        if not commit:
+            return job
 
         self.db.commit()
         return self.get_own(user, job.id)

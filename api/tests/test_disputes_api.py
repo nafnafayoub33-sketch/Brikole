@@ -55,12 +55,27 @@ def stage(client, api_prefix, db):
     db.add(offer)
     db.commit()
 
-    job = client.post(
-        f"{api_prefix}/client/requests/{request['id']}/offers/{offer.id}/accept",
+    pro_token = token_for(client, api_prefix, "0700000001")
+
+    # A job exists once both sides have signed the same terms in the chat.
+    conversation = client.post(
+        f"{api_prefix}/offers/{offer.id}/conversation", headers=auth(client_token)
+    ).json()
+    signature = {"version": conversation["version"]}
+    client.post(
+        f"{api_prefix}/conversations/{conversation['id']}/agree",
+        json=signature,
         headers=auth(client_token),
+    )
+    sealed = client.post(
+        f"{api_prefix}/conversations/{conversation['id']}/agree",
+        json=signature,
+        headers=auth(pro_token),
+    ).json()
+    job = client.get(
+        f"{api_prefix}/jobs/{sealed['job_id']}", headers=auth(client_token)
     ).json()
 
-    pro_token = token_for(client, api_prefix, "0700000001")
     client.post(f"{api_prefix}/jobs/{job['id']}/start", headers=auth(pro_token))
     client.post(f"{api_prefix}/jobs/{job['id']}/finish", headers=auth(pro_token))
 

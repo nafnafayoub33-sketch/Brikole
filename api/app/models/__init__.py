@@ -2,6 +2,7 @@
 
 from app.models.base import Base, PkMixin, TimestampMixin, utcnow
 from app.models.catalog import City, Trade
+from app.models.conversation import Conversation, Message
 from app.models.credit import CreditAccount, CreditTransaction, TopupRequest
 from app.models.dispute import Dispute, DisputeMessage, Report
 from app.models.job import Job, Review
@@ -15,11 +16,13 @@ __all__ = [
     "AuditLog",
     "Base",
     "City",
+    "Conversation",
     "CreditAccount",
     "CreditTransaction",
     "Dispute",
     "DisputeMessage",
     "Job",
+    "Message",
     "Notification",
     "Offer",
     "PkMixin",

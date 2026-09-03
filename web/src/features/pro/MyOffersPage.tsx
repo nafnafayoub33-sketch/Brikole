@@ -160,6 +160,20 @@ function OfferRow({ offer, language }: { offer: MyOffer; language: Language }) {
           </Link>
         ) : offer.status === 'pending' ? (
           <>
+            {/* The thread exists only once the client has opened it. Until
+                then there is nothing to link to, and the row says so rather
+                than showing a link that 404s. */}
+            {offer.conversation_id !== null ? (
+              <Link
+                to={`/pro/chats/${offer.conversation_id}`}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                {t('offer.openChat')}
+              </Link>
+            ) : (
+              <span className="text-sm text-fg-subtle">{t('offer.noReplyYet')}</span>
+            )}
+
             {/* Withdrawing lives here as well as on M5, because M5 closes when
                 his balance runs out and an offer he can no longer edit is one
                 he must still be able to take back. */}

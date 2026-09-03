@@ -77,6 +77,20 @@ class TransactionType(StrEnum):
     FREE_LEAD = "free_lead"
 
 
+class MessageKind(StrEnum):
+    """A line in a conversation.
+
+    `SYSTEM` is the platform narrating what happened — a new price, a
+    signature, the job being created — so the history reads as one thread
+    rather than as chat with the important parts kept somewhere else.
+    """
+
+    TEXT = "text"
+    IMAGE = "image"
+    FILE = "file"
+    SYSTEM = "system"
+
+
 class TopupStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"

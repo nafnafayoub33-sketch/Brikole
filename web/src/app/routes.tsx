@@ -14,6 +14,7 @@ import { DashboardPage } from '@/features/admin/DashboardPage'
 import { FinancePage } from '@/features/admin/FinancePage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
 import { UsersPage } from '@/features/admin/UsersPage'
+import { ChatPage as ClientChatPage } from '@/features/client/ChatPage'
 import { DisputePage as ClientDisputePage } from '@/features/client/DisputePage'
 import { JobPage } from '@/features/client/JobPage'
 import { JobsPage } from '@/features/client/JobsPage'
@@ -31,6 +32,7 @@ import { CreditPage } from '@/features/pro/CreditPage'
 import { FeedPage } from '@/features/pro/FeedPage'
 import { ProJobsPage } from '@/features/pro/JobsPage'
 import { MyOffersPage } from '@/features/pro/MyOffersPage'
+import { ChatPage as ProChatPage } from '@/features/pro/ChatPage'
 import { OfferPage } from '@/features/pro/OfferPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
@@ -76,6 +78,7 @@ export function AppRoutes() {
         <Route path="requests" element={<RequestsPage />} />
         <Route path="requests/new" element={<NewRequestPage />} />
         <Route path="requests/:id" element={<RequestPage />} />
+        <Route path="requests/:id/chats/:conversationId" element={<ClientChatPage />} />
         <Route path="requests/:id/edit" element={<NewRequestPage editing />} />
         <Route path="jobs" element={<JobsPage />} />
         <Route path="jobs/:id" element={<JobPage />} />
@@ -101,6 +104,7 @@ export function AppRoutes() {
         <Route path="requests" element={<FeedPage />} />
         <Route path="requests/:id" element={<OfferPage />} />
         <Route path="offers" element={<MyOffersPage />} />
+        <Route path="chats/:conversationId" element={<ProChatPage />} />
         <Route path="jobs" element={<ProJobsPage />} />
         <Route path="profile" element={<NotBuilt screen="M8" />} />
         <Route path="credit" element={<CreditPage />} />

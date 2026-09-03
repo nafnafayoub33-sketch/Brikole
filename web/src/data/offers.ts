@@ -45,6 +45,9 @@ export interface MyOffer {
   created_at: string
   responded_at: string | null
   job_id: number | null
+  /** Set once the client has opened the thread on this offer. Null means
+   *  nobody has replied yet, and M6 says so rather than linking to nothing. */
+  conversation_id: number | null
 }
 
 export interface FeedRequestDetail extends FeedRequest {

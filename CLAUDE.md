@@ -12,19 +12,41 @@ Project rules for Brikole. Read this before writing any code here.
 A web marketplace for small trade services in Morocco: plumber, painter, carpenter,
 electrician, mobile car wash, and so on. Three parties, four roles:
 
-- **Client** — describes the job, receives offers from tradesmen, picks one, pays the
-  tradesman in cash, rates the work.
+- **Client** — describes the job, receives offers from tradesmen, talks to one in the
+  chat until they agree a price, pays the tradesman in cash, rates the work.
 - **M3allem** (tradesman) — is approved by an admin, sees job requests matching his
-  trades and his area, sends a priced offer, does the work.
+  trades and his area, sends a priced offer, settles the terms in the chat, does the
+  work.
 - **Moderator** — resolves disputes and handles reports. Sees nothing about money.
 - **Admin** — approves tradesmen, manages users, money, trades, settings, statistics.
 
-**Business model:** the platform charges the *tradesman* a fixed fee **only when his
-offer is accepted** — that is the moment a real lead was delivered. The fee is
-deducted from a prepaid balance and is set per trade in `platform_settings`. A new
+**Business model:** the platform charges the *tradesman* a fixed fee **only when the
+client and he have both agreed the same terms** — that is the moment a real lead was
+delivered. The fee is deducted from a prepaid balance and is set per trade in
+`platform_settings`. A new
 tradesman gets a number of free leads. Balance at zero → he stops seeing the request
 feed. There is **no commission on the job price**, and the platform never holds
 client money: the client pays the tradesman directly, in cash.
+
+## The rule the product is built around
+
+**No contact detail reaches the other side until both have agreed.** The platform
+earns its dirham when a lead becomes a job, and only if the job goes through the
+platform; a phone number handed over early is the business model walking out of the
+door. So:
+
+- The tradesman's phone number is on the **job** payload and on no other. Never on a
+  profile, never on an offer, never in a chat message. If a screen needs a way to
+  reach somebody and no job exists, the answer is that it does not get one.
+- The chat between them (C9 / M12) strikes numbers, emails, links and `@handles` out
+  of every message in both directions, including numbers spelled in words and typed
+  in Arabic-Indic digits. The message is still delivered, with the contact struck
+  out; the struck contact is never stored.
+- That redaction is a **deterrent**, not a wall — somebody can photograph a card. The
+  wall is the schema, and the schema is what must never be loosened.
+- A job exists only when **both** sides have signed the same version of the deal. Any
+  change to the price or the terms clears both signatures, including the changer's
+  own.
 
 ## Read these first
 

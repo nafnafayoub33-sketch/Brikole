@@ -1,4 +1,10 @@
-"""Accepting an offer, and the job that comes out of it."""
+"""The handshake that makes a job, and the job that comes out of it.
+
+There is no accept button any more. A job is created when the client and the
+tradesman have both signed the same terms in the chat (C9 / M12), so `shake`
+below is what every test here goes through — the same single transaction,
+reached the way the product now reaches it.
+"""
 
 from __future__ import annotations
 
@@ -78,10 +84,43 @@ def stage(client, api_prefix, db):
     }
 
 
-def accept(client, api_prefix, stage, *, offer_id=None, token=None):
+def open_chat(client, api_prefix, stage, *, offer_id=None, token=None):
     offer_id = offer_id or stage["offers"][stage["winner"].id]
     return client.post(
-        f"{api_prefix}/client/requests/{stage['request_id']}/offers/{offer_id}/accept",
+        f"{api_prefix}/offers/{offer_id}/conversation",
+        headers=auth(token or stage["token"]),
+    )
+
+
+def accept(client, api_prefix, stage, *, offer_id=None, token=None, profile=None):
+    """Open the chat and have both sides sign. Returns the job, or the refusal
+    from whichever step refused, so the caller reads one response either way."""
+    opened = open_chat(client, api_prefix, stage, offer_id=offer_id, token=token)
+    if opened.status_code != 200:
+        return opened
+
+    conversation = opened.json()
+    version = conversation["version"]
+    signed = client.post(
+        f"{api_prefix}/conversations/{conversation['id']}/agree",
+        json={"version": version},
+        headers=auth(token or stage["token"]),
+    )
+    if signed.status_code != 200:
+        return signed
+
+    profile = profile or stage["winner"]
+    pro_token = token_for(client, api_prefix, profile.user.phone[4:].rjust(10, "0"))
+    sealed = client.post(
+        f"{api_prefix}/conversations/{conversation['id']}/agree",
+        json={"version": version},
+        headers=auth(pro_token),
+    )
+    if sealed.status_code != 200 or sealed.json().get("job_id") is None:
+        return sealed
+
+    return client.get(
+        f"{api_prefix}/jobs/{sealed.json()['job_id']}",
         headers=auth(token or stage["token"]),
     )
 
@@ -90,7 +129,7 @@ def test_accepting_settles_the_offer_the_request_and_the_job_at_once(
     client, api_prefix, db, stage
 ):
     response = accept(client, api_prefix, stage)
-    assert response.status_code == 201, response.text
+    assert response.status_code == 200, response.text
 
     job = response.json()
     assert job["status"] == "assigned"
@@ -150,7 +189,7 @@ def test_an_empty_balance_does_not_block_the_client(client, api_prefix, db, stag
     account.balance_centimes = 0
     db.commit()
 
-    assert accept(client, api_prefix, stage).status_code == 201
+    assert accept(client, api_prefix, stage).status_code == 200
 
     db.expire_all()
     account = db.query(CreditAccount).filter_by(provider_id=stage["winner"].id).one()
@@ -158,9 +197,11 @@ def test_an_empty_balance_does_not_block_the_client(client, api_prefix, db, stag
 
 
 def test_a_second_acceptance_is_refused(client, api_prefix, stage):
-    assert accept(client, api_prefix, stage).status_code == 201
+    """The other offer was declined the moment the first deal was sealed, so
+    there is nothing left to open a chat on."""
+    assert accept(client, api_prefix, stage).status_code == 200
 
-    again = accept(
+    again = open_chat(
         client, api_prefix, stage, offer_id=stage["offers"][stage["loser"].id]
     )
     assert again.status_code == 409
@@ -172,7 +213,7 @@ def test_a_withdrawn_offer_cannot_be_accepted(client, api_prefix, db, stage):
     db.get(Offer, offer_id).status = OfferStatus.WITHDRAWN
     db.commit()
 
-    response = accept(client, api_prefix, stage, offer_id=offer_id)
+    response = open_chat(client, api_prefix, stage, offer_id=offer_id)
     assert response.status_code == 409
     assert response.json()["details"]["reason"] == "offer_not_pending"
 
@@ -186,14 +227,14 @@ def test_a_suspended_tradesman_cannot_be_accepted(client, api_prefix, db, stage)
     assert response.json()["details"]["reason"] == "provider_unavailable"
 
 
-def test_somebody_else_cannot_accept_an_offer_on_your_request(
+def test_somebody_else_cannot_open_a_chat_on_your_request(
     client, api_prefix, db, stage
 ):
     make_user(db, phone="+212611111112", role=Role.CLIENT)
     db.commit()
     other = token_for(client, api_prefix, "0611111112")
 
-    assert accept(client, api_prefix, stage, token=other).status_code == 404
+    assert open_chat(client, api_prefix, stage, token=other).status_code == 404
 
 
 # -- the lifecycle ------------------------------------------------------

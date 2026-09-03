@@ -51,18 +51,15 @@ def get_job(job_id: int, user: CurrentUser, db: DbSession) -> JobOut:
     return _out(service, service.get_own(user, job_id), user)
 
 
-@router.post(
-    "/client/requests/{request_id}/offers/{offer_id}/accept",
-    response_model=JobOut,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.CLIENT))],
-)
-def accept_offer(
-    request_id: int, offer_id: int, user: CurrentUser, db: DbSession
-) -> JobOut:
-    """C3's one irreversible button. Creates the job the client lands on."""
-    service = JobService(db)
-    return _out(service, service.accept_offer(user, request_id, offer_id), user)
+# There is deliberately no "accept this offer" route any more.
+#
+# It used to be C3's one irreversible button: the client pressed it, the job
+# existed and the tradesman was charged for a price he had quoted before seeing
+# the work and terms he had never confirmed. A job now needs **both**
+# signatures, which is what `POST /conversations/{id}/agree` is — the same
+# single transaction, reached through the chat where the two of them actually
+# settled on a number. Leaving this route alive beside it would have been a way
+# to charge a tradesman without asking him.
 
 
 @router.post(

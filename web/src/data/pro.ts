@@ -41,6 +41,7 @@ export type UploadPurpose =
   | 'id_card'
   | 'portfolio'
   | 'request_photo'
+  | 'chat_file'
   | 'receipt'
 
 export interface UploadResult {

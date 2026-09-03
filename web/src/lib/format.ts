@@ -35,6 +35,16 @@ export function formatDirhams(centimes: number, language: Language = 'ar'): stri
   return `${formatted} DH`
 }
 
+/** Wrap a value so it keeps its own direction inside a sentence in another.
+ *
+ *  `550 DH` interpolated into an Arabic line renders as `DH 550` — the Latin
+ *  run is laid out by the paragraph's direction unless it is isolated. CSS
+ *  cannot reach inside an interpolated string, so the isolate travels with the
+ *  value: U+2066 LEFT-TO-RIGHT ISOLATE … U+2069 POP DIRECTIONAL ISOLATE. */
+export function isolate(text: string): string {
+  return `\u2066${text}\u2069`
+}
+
 /** A plain count: `1073` → `1.073`, in the same grouping the prices use.
  *  Two separators on one screen — `1,073` beside `10.700 DH` — reads as two
  *  different numbering systems, which is exactly what it is. */

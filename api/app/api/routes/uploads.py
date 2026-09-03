@@ -11,16 +11,23 @@ from enum import StrEnum
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Response, UploadFile
+from sqlalchemy import select
 
 from app.core.enums import Role
 from app.core.errors import DomainError, ErrorCode
-from app.deps import CurrentUser, StorageDep
+from app.deps import CurrentUser, DbSession, StorageDep
+from app.models.conversation import Conversation, Message
 from app.schemas.common import ApiModel
 from app.services.storage import MAX_BYTES, Bucket
 
 router = APIRouter(tags=["uploads"])
 
-CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+CONTENT_TYPES = {
+    "jpg": "image/jpeg",
+    "png": "image/png",
+    "webp": "image/webp",
+    "pdf": "application/pdf",
+}
 
 
 class UploadPurpose(StrEnum):
@@ -29,6 +36,7 @@ class UploadPurpose(StrEnum):
     PORTFOLIO = "portfolio"
     REQUEST_PHOTO = "request_photo"
     RECEIPT = "receipt"
+    CHAT_FILE = "chat_file"
 
 
 #: Who may upload what. Stated as a table rather than as a chain of `if`s,
@@ -39,6 +47,8 @@ ALLOWED_ROLES: dict[UploadPurpose, frozenset[Role] | None] = {
     UploadPurpose.PORTFOLIO: frozenset({Role.PROVIDER}),
     UploadPurpose.REQUEST_PHOTO: frozenset({Role.CLIENT}),
     UploadPurpose.RECEIPT: frozenset({Role.PROVIDER}),
+    # Both sides of a chat send photos and documents.
+    UploadPurpose.CHAT_FILE: frozenset({Role.CLIENT, Role.PROVIDER}),
 }
 
 
@@ -70,7 +80,7 @@ async def upload(
         )
 
     # A bank receipt carries an account number, exactly like an ID card does.
-    private = {UploadPurpose.ID_CARD, UploadPurpose.RECEIPT}
+    private = {UploadPurpose.ID_CARD, UploadPurpose.RECEIPT, UploadPurpose.CHAT_FILE}
     bucket = Bucket.PRIVATE if purpose in private else Bucket.PUBLIC
     folder = {
         UploadPurpose.AVATAR: "avatars",
@@ -78,6 +88,7 @@ async def upload(
         UploadPurpose.PORTFOLIO: "portfolio",
         UploadPurpose.REQUEST_PHOTO: "requests",
         UploadPurpose.RECEIPT: "receipts",
+        UploadPurpose.CHAT_FILE: "chat",
     }[purpose]
 
     path = storage.save(data, bucket=bucket, folder=f"{folder}/{user.id}")
@@ -91,14 +102,46 @@ def read_public(rest: str, storage: StorageDep) -> Response:
 
 
 @router.get("/uploads/private/{rest:path}")
-def read_private(rest: str, user: CurrentUser, storage: StorageDep) -> Response:
-    """An identity document. Its owner, or an admin. Nobody else, ever."""
+def read_private(
+    rest: str, user: CurrentUser, storage: StorageDep, db: DbSession
+) -> Response:
+    """A private file. Who may read one depends on what it is.
+
+    Not "forbidden" when they may not: whether a file exists is itself private,
+    so the answer is the same 404 a wrong path gets.
+    """
+    if rest.startswith("chat/"):
+        # A photo or a document somebody put in a chat. Its uploader, and the
+        # one other person in that conversation. Membership is asked of the
+        # database rather than inferred from the path: the folder is named
+        # after whoever uploaded it, which says nothing about who may read it.
+        if not _in_conversation(db, user, f"{Bucket.PRIVATE}/{rest}"):
+            raise DomainError(ErrorCode.NOT_FOUND)
+        return _serve(storage.read(f"{Bucket.PRIVATE}/{rest}"), rest, cacheable=False)
+
+    # An identity document or a bank receipt. Its owner, or an admin.
     owned = rest.startswith(f"id-cards/{user.id}/")
     if not owned and user.role is not Role.ADMIN:
-        # Not "forbidden": whether a document exists is itself private.
         raise DomainError(ErrorCode.NOT_FOUND)
 
     return _serve(storage.read(f"{Bucket.PRIVATE}/{rest}"), rest, cacheable=False)
+
+
+def _in_conversation(db: DbSession, user: CurrentUser, path: str) -> bool:
+    message = db.execute(
+        select(Message).where(Message.attachment_path == path)
+    ).scalar_one_or_none()
+    if message is None:
+        return False
+
+    conversation = db.get(Conversation, message.conversation_id)
+    if conversation is None:  # pragma: no cover — the FK forbids it
+        return False
+
+    if conversation.client_id == user.id:
+        return True
+    profile = user.provider_profile
+    return profile is not None and profile.id == conversation.provider_id
 
 
 def _serve(data: bytes, path: str, *, cacheable: bool) -> Response:
