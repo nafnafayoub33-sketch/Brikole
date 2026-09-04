@@ -8,6 +8,7 @@ means a rule can be unit-tested without a database.
 
 from __future__ import annotations
 
+from app.core import report as _report
 from app.core.money import dirhams
 
 
@@ -21,6 +22,7 @@ class SettingKey:
     REQUEST_EXPIRY_DAYS = "request_expiry_days"
     AUTO_CONFIRM_DAYS = "auto_confirm_days"
     DISPUTE_WINDOW_DAYS = "dispute_window_days"
+    CONTACT_FLAG_THRESHOLD = "contact_flag_threshold"
     DEFAULT_RADIUS_KM = "default_radius_km"
     BANK_TRANSFER = "bank_transfer"
     MAINTENANCE_MODE = "maintenance_mode"
@@ -28,10 +30,21 @@ class SettingKey:
 
 #: Charged to the tradesman when a client accepts his offer, unless the trade
 #: overrides it. Not a commission — the platform never sees the job price.
-DEFAULT_LEAD_FEE_CENTIMES = dirhams(10)
+#:
+#: Deliberately small. It is not what the platform lives on; being on the list
+#: is free and always will be, and the money comes from the tradesmen who
+#: choose to pay for placement on top of it. This fee exists so that revenue
+#: still grows when the platform does, which a subscription alone would not do.
+DEFAULT_LEAD_FEE_CENTIMES = dirhams(5)
 
-#: A new tradesman works this many jobs before the fee starts applying.
-FREE_LEADS_NEW_PROVIDER = 20
+#: A new tradesman works this many jobs before the fee starts applying. Enough
+#: to find out whether the platform brings him anything, and no more: a longer
+#: run costs the platform real money on somebody who may never come back.
+FREE_LEADS_NEW_PROVIDER = 5
+
+#: Different clients a tradesman may try to hand his number to before staff
+#: hear about it. Lives in `core/report.py` with the rule that reads it.
+CONTACT_FLAG_THRESHOLD = _report.CONTACT_FLAG_THRESHOLD
 
 #: Stops one client flooding the feed.
 MAX_OPEN_REQUESTS_PER_CLIENT = 3
@@ -62,6 +75,7 @@ DEFAULTS: dict[str, object] = {
     SettingKey.REQUEST_EXPIRY_DAYS: REQUEST_EXPIRY_DAYS,
     SettingKey.AUTO_CONFIRM_DAYS: AUTO_CONFIRM_DAYS,
     SettingKey.DISPUTE_WINDOW_DAYS: DISPUTE_WINDOW_DAYS,
+    SettingKey.CONTACT_FLAG_THRESHOLD: CONTACT_FLAG_THRESHOLD,
     SettingKey.DEFAULT_RADIUS_KM: DEFAULT_RADIUS_KM,
     SettingKey.MAINTENANCE_MODE: False,
     SettingKey.BANK_TRANSFER: {

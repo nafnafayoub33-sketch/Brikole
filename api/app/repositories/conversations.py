@@ -100,6 +100,29 @@ class ConversationRepository:
             ).scalar_one()
         )
 
+    def clients_he_sent_a_contact_to(self, provider_id: int) -> int:
+        """How many *different* clients this tradesman has tried to hand a
+        contact detail to.
+
+        Counted over conversations rather than messages, and distinct on the
+        client: four attempts at one man who is not answering is persistence,
+        not a pattern. `redacted_count` is already on every message — the
+        struck contact itself was never stored, and this is the whole reason
+        a count was kept in its place.
+        """
+        return int(
+            self.db.execute(
+                select(func.count(func.distinct(Conversation.client_id)))
+                .select_from(Conversation)
+                .join(Message, Message.conversation_id == Conversation.id)
+                .where(
+                    Conversation.provider_id == provider_id,
+                    Message.sender_id != Conversation.client_id,
+                    Message.redacted_count > 0,
+                )
+            ).scalar_one()
+        )
+
     def newest_message_id(self, conversation_id: int) -> int | None:
         return self.db.execute(
             select(func.max(Message.id)).where(Message.conversation_id == conversation_id)

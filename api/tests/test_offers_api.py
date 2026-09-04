@@ -103,7 +103,7 @@ def test_an_empty_balance_closes_the_feed(client, api_prefix, db, stage):
     """He is not shown work he cannot take — reading it, picking one and being
     refused at the end is the cruellest version of this screen."""
     account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
-    account.balance_centimes = dirhams(9)
+    account.balance_centimes = dirhams(4)  # one dirham short of the fee
     db.commit()
 
     response = feed(client, api_prefix, stage)
@@ -148,7 +148,7 @@ def detail(client, api_prefix, stage, request_id=None):
 
 def test_the_detail_states_the_fee_before_he_writes_a_price(client, api_prefix, stage):
     body = detail(client, api_prefix, stage).json()
-    assert body["lead_fee_centimes"] == dirhams(10)
+    assert body["lead_fee_centimes"] == dirhams(5)
     assert body["my_offer"] is None
     assert body["description"].startswith("L'eau coule")
 
@@ -210,7 +210,7 @@ def test_an_empty_balance_blocks_the_offer_too(client, api_prefix, db, stage):
 
     response = send(client, api_prefix, stage)
     assert response.status_code == 402
-    assert response.json()["details"]["fee_centimes"] == dirhams(10)
+    assert response.json()["details"]["fee_centimes"] == dirhams(5)
 
 
 def test_a_price_below_the_floor_is_refused(client, api_prefix, stage):
@@ -332,7 +332,7 @@ def test_the_feed_marks_the_ones_he_has_already_answered(client, api_prefix, sta
 def test_the_credit_summary_says_whether_he_can_work(client, api_prefix, db, stage):
     body = client.get(f"{api_prefix}/pro/credit", headers=auth(stage["token"])).json()
     assert body["balance_centimes"] == dirhams(50)
-    assert body["default_lead_fee_centimes"] == dirhams(10)
+    assert body["default_lead_fee_centimes"] == dirhams(5)
     assert body["can_take_work"] is True
 
     account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()

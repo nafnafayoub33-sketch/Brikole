@@ -63,12 +63,6 @@ class Conversation(PkMixin, TimestampMixin, Base):
     #: produced hangs off the offer, not off here.
     sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    #: Set when the tradesman handed over a contact detail and paid the lead
-    #: fee for it. From that moment contacts flow freely in both directions:
-    #: the platform has been paid for this lead, so there is nothing left to
-    #: protect. Sealing later does not charge him a second time.
-    lead_charged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
     #: Cheap ordering for an inbox. Not what "unread" is measured against —
     #: see below.
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

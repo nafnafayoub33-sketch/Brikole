@@ -31,6 +31,7 @@ NUMERIC_BOUNDS: dict[str, Bound] = {
     SettingKey.REQUEST_EXPIRY_DAYS: Bound(1, 365),
     SettingKey.AUTO_CONFIRM_DAYS: Bound(1, 60),
     SettingKey.DISPUTE_WINDOW_DAYS: Bound(1, 90),
+    SettingKey.CONTACT_FLAG_THRESHOLD: Bound(1, 1000),
     SettingKey.DEFAULT_RADIUS_KM: Bound(1, 100),
 }
 

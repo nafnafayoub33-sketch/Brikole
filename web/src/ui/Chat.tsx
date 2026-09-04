@@ -11,7 +11,6 @@ import {
   useThread,
   useWithdrawAgreement,
 } from '@/data/chat'
-import { ApiError } from '@/data/client'
 import { useUpload } from '@/data/pro'
 import { useErrorMessage } from '@/hooks/useErrorMessage'
 import { usePrivateImage } from '@/hooks/usePrivateImage'
@@ -106,17 +105,7 @@ export function Chat({
       ) : (
         <>
           <Deal conversation={conversation} language={language} />
-          {conversation.lead_charged_at ? (
-            <Alert tone="success">{t('chat.contactsOpen')}</Alert>
-          ) : (
-            <Alert tone="info">
-              {conversation.viewer_is_client
-                ? t('chat.noNumbersClient')
-                : t('chat.noNumbersPro', {
-                    fee: isolate(formatDirhams(conversation.contact_fee_centimes, language)),
-                  })}
-            </Alert>
-          )}
+          <Alert tone="info">{t('chat.noNumbers')}</Alert>
         </>
       )}
 
@@ -126,7 +115,7 @@ export function Chat({
         language={language}
       />
 
-      <Composer conversation={conversation} language={language} />
+      <Composer conversation={conversation} />
     </div>
   )
 }
@@ -513,14 +502,6 @@ function SystemLine({
       ? t('chat.systemWithdrewYou')
       : t('chat.systemWithdrewThem', { who }),
     'conversation.sealed': t('chat.systemSealed'),
-    // Zero is a free lead, not a zero-dirham payment — and every new
-    // tradesman has ten of them, so it is the line most of them see first.
-    // Her side never learns which it was: what he was billed is his business.
-    'conversation.contact_paid': mine
-      ? Number(args.get('price_centimes') ?? 0) === 0
-        ? t('chat.systemContactFreeYou')
-        : t('chat.systemContactPaidYou', { price })
-      : t('chat.systemContactPaidThem', { who }),
   }[key ?? '']
 
   if (!label) return null
@@ -533,46 +514,21 @@ function firstName(fullName: string): string {
   return fullName.split(' ')[0] ?? fullName
 }
 
-function Composer({
-  conversation,
-  language,
-}: {
-  conversation: Conversation
-  language: Language
-}) {
+function Composer({ conversation }: { conversation: Conversation }) {
   const { t } = useTranslation()
   const message = useErrorMessage()
   const send = useSendMessage(conversation.id)
   const upload = useUpload()
 
   const [body, setBody] = useState('')
-  /** Set when the API answered "this carries a contact and costs the lead
-   *  fee". He is asked, and only then is anything taken. */
-  const [priced, setPriced] = useState<number | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const busy = send.isPending || upload.isPending
-  const error =
-    send.error instanceof ApiError && send.error.code === 'contact_costs_credit'
-      ? null
-      : (message(send.error) ?? message(upload.error))
+  const error = message(send.error) ?? message(upload.error)
 
-  const submit = (acceptCharge: boolean) => {
+  const submit = () => {
     if (!body.trim()) return
-    send.mutate(
-      { body, accept_charge: acceptCharge },
-      {
-        onSuccess: () => {
-          setBody('')
-          setPriced(null)
-        },
-        onError: (cause) => {
-          if (cause instanceof ApiError && cause.code === 'contact_costs_credit') {
-            setPriced(Number(cause.details.fee_centimes ?? 0))
-          }
-        },
-      },
-    )
+    send.mutate({ body }, { onSuccess: () => setBody('') })
   }
 
   const attach = (file: File) => {
@@ -598,42 +554,18 @@ function Composer({
         </Alert>
       )}
 
-      {/* Money never moves without the question in front of it. He typed his
-          number; he has not agreed to pay for it. */}
-      {priced !== null && (
-        <Alert tone="warning" className="mb-3">
-          <p className="font-semibold">
-            {t('chat.contactCosts', { fee: isolate(formatDirhams(priced, language)) })}
-          </p>
-          <p className="mt-1">{t('chat.contactCostsBody')}</p>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <Button size="sm" loading={send.isPending} onClick={() => submit(true)}>
-              {t('chat.contactPay')}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setPriced(null)}>
-              {t('chat.contactKeep')}
-            </Button>
-          </div>
-        </Alert>
-      )}
-
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault()
-          submit(false)
+          submit()
         }}
       >
         <div className="min-w-48 flex-1">
           <Field
             label={t('chat.write')}
             value={body}
-            onChange={(event) => {
-              setBody(event.target.value)
-              // What he is being quoted for is the message he had typed. Once
-              // he edits it the quote is about something else.
-              setPriced(null)
-            }}
+            onChange={(event) => setBody(event.target.value)}
           />
         </div>
 
@@ -658,15 +590,7 @@ function Composer({
           {t('chat.attach')}
         </Button>
 
-        {/* While the quote stands, the decision is the one inside it. This
-            button still works — it re-asks the same question — so it steps
-            back rather than competing with the answer. */}
-        <Button
-          type="submit"
-          variant={priced === null ? 'primary' : 'secondary'}
-          loading={send.isPending}
-          disabled={!body.trim()}
-        >
+        <Button type="submit" loading={send.isPending} disabled={!body.trim()}>
           {t('chat.sendMessage')}
         </Button>
       </form>

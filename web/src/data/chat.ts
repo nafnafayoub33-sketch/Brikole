@@ -61,11 +61,6 @@ export interface Conversation {
   provider_agreed: boolean
   sealed_at: string | null
   job_id: number | null
-  /** Set once the tradesman paid the lead fee to hand over a contact. From
-   *  then on nothing is struck out of either side's messages. */
-  lead_charged_at: string | null
-  /** What that costs him — stated before he can be charged for it. */
-  contact_fee_centimes: number
 
   last_message_at: string | null
 }
@@ -135,10 +130,6 @@ export function useSendMessage(conversationId: number) {
   return useMutation({
     mutationFn: (body: {
       body: string
-      /** The tradesman agreeing to the lead fee for a message carrying his
-       *  number. Without it the API refuses with the price rather than
-       *  charging him for something he did not know would cost. */
-      accept_charge?: boolean
       attachment_path?: string | null
       attachment_name?: string | null
       attachment_bytes?: number | null
@@ -146,8 +137,6 @@ export function useSendMessage(conversationId: number) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...CHAT_KEY, conversationId] })
       void queryClient.invalidateQueries({ queryKey: [...CHAT_KEY, 'unread'] })
-      // Revealing a contact takes the lead fee, so his balance moved.
-      void queryClient.invalidateQueries({ queryKey: CREDIT_KEY })
     },
   })
 }

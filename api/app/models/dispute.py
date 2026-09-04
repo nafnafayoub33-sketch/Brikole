@@ -79,8 +79,12 @@ class Report(PkMixin, TimestampMixin, Base):
 
     __tablename__ = "reports"
 
-    reporter_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    #: Null when the platform filed it rather than a person — see
+    #: `ReportReason.CONTACT_SHARING`. A staff screen reads the absence as
+    #: "the system noticed this", which is a different weight from an
+    #: accusation somebody put their name to.
+    reporter_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
     #: "user" | "review" | "provider_profile" — a loose pointer on purpose, so a
     #: new reportable thing does not need a migration.

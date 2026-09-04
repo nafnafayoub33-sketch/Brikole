@@ -141,20 +141,11 @@ class JobService:
     def _charge_lead_fee(
         self, provider: ProviderProfile, offer: Offer, job: Job, request: ServiceRequest
     ) -> int:
-        """The fee for this lead, unless it has already been paid.
+        """Take the fee and write the row that explains it, together.
 
-        A tradesman who handed over his number in the chat has already been
-        charged for exactly this lead — `offer.lead_fee_centimes` is set the
-        moment that happens. Charging again at the handshake would bill him
-        twice for one client, which is the fastest way to teach him never to
-        answer a question in the chat again.
-
-        The fee is frozen onto the offer either way: a later change to the
+        The fee is frozen onto the offer by the caller: a later change to the
         trade's price must never rewrite what this lead actually cost.
         """
-        if offer.lead_fee_centimes is not None:
-            return offer.lead_fee_centimes
-
         taken = lead_fee.charge(
             self.db, provider=provider, offer=offer, request=request, job_id=job.id
         )

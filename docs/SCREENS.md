@@ -172,11 +172,10 @@ Trades & cities · Settings · Audit log.
   upstream — M5 refuses to send an offer without credit — so a shortfall here is
   the narrow case where the fee changed, or the balance was spent, while they
   were talking.
-- **The tradesman's phone number appears here and nowhere the fee has not been
-  paid.** Not on P3, not on C3, and not in the chat that led here — C9 strikes
-  contacts out of every message until the lead has been paid for, by this
-  screen existing or by him choosing to pay for it earlier. Before that, nobody
-  has agreed to anything and the platform has not been paid.
+- **The tradesman's phone number appears here and nowhere earlier.** Not on P3,
+  not on C3, and not in the chat that led here — C9 strikes contacts out of
+  every message until this screen exists. Before both have signed, nobody has
+  agreed to anything and the platform has not been paid.
 - **Who may move it where is not symmetric.** The tradesman starts and finishes;
   the client confirms. Neither owns the other's arrow, and a client cannot cancel
   once the work is done — that is what C8 is for.
@@ -351,26 +350,28 @@ side, and the same component draws both.
   teach people to write `zero six` and lose the sentence around it. The struck
   contact is **never stored**; only a count of how many were removed, which is
   what a moderator reads as somebody trying repeatedly.
-- **The tradesman can buy his way past it, once.** He may want to call her
-  today rather than type; that is a real lead being delivered, so it costs the
-  lead fee. His message is refused with the price rather than charged silently
-  — a banner names the amount before he types, and a card asks again on the
-  message that carries the number. If he agrees, the fee is taken, the message
-  goes whole, and the thread carries contacts freely in **both** directions
-  from then on. He is charged **once for this client**: the handshake afterwards
-  creates the job without charging him again.
-- **It is the same fee at either door.** Revealing a contact is not a cheaper
-  side entrance to the same lead — if it were, his best move would be to send
-  his number and never accept anything, and the platform would collect the
-  smaller number on every job it brokered.
-- **The client is never charged**, and her number is struck out until he has
-  paid. She has no balance to take a fee from, and she is not the one being
-  sold a lead. The banner on her side says so, so the silence is not read as a
-  bug.
+- **Nobody is refused and nobody is charged for trying.** He types his number,
+  the message goes, and the number is not in it. A 402 in the middle of a
+  conversation two people are having in good faith is a paywall, and refusing
+  the message outright only teaches him to write `zero six`. One banner states
+  the rule, worded the same to both of them.
+- **Quiet is not secret.** The bubble says a contact was removed, to the person
+  who sent it as much as to the person who did not get it. Without that he
+  waits for a call that was never coming, and blames the client.
+- **What the platform does instead is count.** Past `contact_flag_threshold`
+  *different clients* (default 10) it files a report on the tradesman's profile
+  and staff decide at D3. Nothing happens to him here — no suspension, no fee,
+  no message he can see. A person is only being asked to look.
+- **Counted in clients, never in messages.** Writing his number four times to
+  one man who is not replying is persistence. The pattern that matters is the
+  same move made to stranger after stranger.
+- **The client is not counted.** She is not the one who would take the work off
+  the platform, and her half of this rule exists to protect her, not to police
+  her.
 - **What must not fire.** `prix 2000dh`, `1500 2000 2500 3000 dh`, `rab3a d
   nhar`, `2 m x 3 m` and a date are ordinary talk. A rule that eats prices is
-  switched off within a week, and a tradesman quoting a list must never be told
-  it costs money.
+  switched off within a week, and a tradesman quoting a list must never learn
+  to distrust the box.
 - **This is a deterrent, not a wall.** Somebody determined can photograph a
   business card. The wall is structural and elsewhere: the tradesman's phone
   number is on the job payload and on nothing that exists before one.
@@ -389,15 +390,14 @@ side, and the same component draws both.
 - **Messages carry photos and documents** (JPEG, PNG, WebP, PDF) in the private
   bucket, readable only by the two people in that conversation — membership is
   asked of the database, never inferred from the folder name.
-- **Once the lead is paid for the redaction stops** — whether it was paid by
-  the handshake or by the reveal. The platform has been paid and they have each
-  other's number on C4; striking one out here would be superstition.
+- **Once the job exists the redaction stops.** The platform has been paid and
+  they have each other's number on C4; striking one out here would be
+  superstition.
 - **Looking at the thread is what marks it read**, and the newest message is
   what "looked at" means — so it fires again when one arrives while the screen
   is open, not only when it mounts.
-- **States:** loading · empty thread · talking · contacts still struck ·
-  quoted for a contact · contacts open · one signature · both signed (the deal
-  card is replaced by a link to the job) · the offer was withdrawn
+- **States:** loading · empty thread · talking · one signature · both signed
+  (the deal card is replaced by a link to the job) · the offer was withdrawn
 - → C4
 
 ### M12 · Chat with a client — `/pro/chats/:conversationId` ⭐
@@ -412,15 +412,14 @@ The same thread as C9, from the tradesman's side, drawn by the same component.
   A thread he has never opened counts, which is the case the badge exists for:
   a client tapping his offer writes only a system line, and a rule that watched
   for messages from the other side would stay silent on exactly that.
-- **He is the one with a balance**, so he is the one the contact rule offers a
-  price to. The banner states the fee before he writes anything; the quote card
-  states it again on the message that carries the number; agreeing takes it and
-  opens the thread both ways. A short balance does not refuse him — the number
-  is out of the bag by then — it goes negative and M5 is where he is stopped.
-- The rest is C9: the same deal card, the same two signatures, and the same
-  second signature that creates the job — at the price he actually agreed to,
-  not the one he guessed before seeing the photos — charging him the lead fee
-  unless the reveal already did.
+- **He is the one being counted**, and he is not told so on this screen. The
+  banner states the rule; a running tally beside it would read as a threat to
+  the twenty tradesmen who will never come near the line, to deter the one who
+  will anyway.
+- The rest is C9: the same deal card, the same two signatures, the same rule
+  about contacts, and the same second signature that creates the job and
+  charges him the lead fee — at the price he actually agreed to, not the one he
+  guessed before seeing the photos.
 
 # 4. Moderator — `/mod`
 
@@ -474,6 +473,16 @@ The same thread as C9, from the tradesman's side, drawn by the same component.
   that one carries none, and a moderator cannot act on it.
 - Other open reports on the same target are counted on the card: three
   complaints about one review is a different decision from one.
+- **Some reports have no reporter.** The platform files one itself when a
+  tradesman has tried to hand his number to more than `contact_flag_threshold`
+  different clients in the chat. The card says "flagged automatically —
+  nobody complained" rather than showing a dash where a name goes: an absent
+  name is not missing data, it is the finding. The count travels as a number
+  and the sentence around it is written on the screen, in the language the
+  moderator reads.
+- **The platform files it once.** While one is open, another is not new
+  information, and a queue with the same man in it forty times is a queue
+  nobody reads.
 - **States:** loading · empty ("Nothing to review") · error with retry ·
   already handled by another moderator → 409 rather than a second suspension.
 - Handling writes an `audit_log` row with the outcome and the reason.
@@ -594,8 +603,9 @@ What it refuses, and why:
 
 ### A7 · Settings — `/admin/settings`
 - Default lead fee, free leads for a new tradesman, request cap per client, offer
-  expiry, dispute window, the platform's bank details shown at M9, and maintenance
-  mode. Every change is audited with the old and the new value.
+  expiry, dispute window, how many clients a tradesman may try to hand his number
+  to before staff hear about it, the platform's bank details shown at M9, and
+  maintenance mode. Every change is audited with the old and the new value.
 - **Every value is bounded in `core/settings_rules.py`**, not trusted. A lead fee
   of zero makes the business free and a request cap of zero makes the product
   unusable — both are one mistyped digit away on this form.

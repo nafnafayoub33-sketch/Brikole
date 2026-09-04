@@ -307,7 +307,7 @@ def test_a_client_at_fault_gets_the_lead_fee_back_to_the_tradesman(
     assert account.balance_centimes == dirhams(50)
 
     refund = db.query(CreditTransaction).filter_by(reason="dispute_refund").one()
-    assert refund.amount_centimes == dirhams(10)
+    assert refund.amount_centimes == dirhams(5)
 
 
 def test_a_refund_is_refused_on_any_other_verdict(client, api_prefix, stage):
@@ -402,7 +402,7 @@ def test_the_moderator_sees_the_lead_fee_and_no_other_money(client, api_prefix, 
     dispute_id = open_dispute(client, api_prefix, stage).json()["id"]
     body = client.get(f"{api_prefix}/disputes/{dispute_id}", headers=auth(stage["mod"])).json()
 
-    assert body["job"]["lead_fee_centimes"] == dirhams(10)
+    assert body["job"]["lead_fee_centimes"] == dirhams(5)
     serialised = str(body)
     assert "balance_centimes" not in serialised
     assert "free_leads_left" not in serialised

@@ -37,6 +37,7 @@ const REASON_KEYS: Record<ReportReason, string> = {
   fake: 'report.reasonFake',
   wrong_info: 'report.reasonWrongInfo',
   other: 'report.reasonOther',
+  contact_sharing: 'report.reasonContactSharing',
 }
 
 const OUTCOME_KEYS: Record<ReportOutcome, string> = {
@@ -113,6 +114,14 @@ export function ReportsPage() {
   )
 }
 
+/** The number in a platform flag's description, or null if it is not one. */
+function count(description: string | null): number | null {
+  const parsed = Number(description)
+  return description !== null && description !== '' && Number.isFinite(parsed)
+    ? parsed
+    : null
+}
+
 function ReportCard({ report, language }: { report: Report; language: Language }) {
   const { t } = useTranslation()
   const handle = useHandleReport()
@@ -123,6 +132,11 @@ function ReportCard({ report, language }: { report: Report; language: Language }
   const done = report.status === 'handled'
   // Hiding needs something to hide. A profile is not a piece of content.
   const hideable = report.target_type === 'review' && !report.content?.is_hidden
+  // The platform's own flag carries a count where a person would have written
+  // a sentence. Parsed rather than trusted: `description` is one free-text
+  // column shared with every report a human files, and a moderator reading
+  // "NaN clients" learns nothing except that the screen is broken.
+  const seen = report.reason === 'contact_sharing' ? count(report.description) : null
   const complete = outcome !== null && note.trim().length > 0
 
   return (
@@ -142,17 +156,35 @@ function ReportCard({ report, language }: { report: Report; language: Language }
         </span>
       </div>
 
+      {/* An em dash where a name goes reads as missing data. This report has
+          no name because nobody made an accusation — the platform counted
+          something — and that is worth a sentence, not a placeholder. */}
       <p className="mt-3 text-sm text-fg-muted">
-        {t('reports.reportedBy')}:{' '}
-        <span dir="auto" className="font-medium text-fg">
-          {report.reporter_name ?? '—'}
-        </span>
+        {report.reporter_id === null ? (
+          t('reports.flaggedByThePlatform')
+        ) : (
+          <>
+            {t('reports.reportedBy')}:{' '}
+            <span dir="auto" className="font-medium text-fg">
+              {report.reporter_name ?? '—'}
+            </span>
+          </>
+        )}
       </p>
 
-      {report.description && (
-        <p dir="auto" className="mt-2 text-sm text-fg-muted">
-          {report.description}
+      {/* A person's report carries a person's words. The platform's carries a
+          number, and the sentence around it is written here — in the language
+          the moderator reading it chose, not the one the API was written in. */}
+      {seen !== null ? (
+        <p className="mt-2 text-sm text-fg-muted">
+          {t('reports.contactSharingCount', { count: seen })}
         </p>
+      ) : (
+        report.description && (
+          <p dir="auto" className="mt-2 text-sm text-fg-muted">
+            {report.description}
+          </p>
+        )
       )}
 
       {/* The thing complained about, quoted. */}

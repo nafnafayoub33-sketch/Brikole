@@ -1,17 +1,11 @@
 """Charging a tradesman for a lead, in the one place it happens.
 
-A lead is charged for exactly once, and there are now two moments it can
-happen at:
-
-* the two of them shake hands and the job is created, or
-* the tradesman hands over his phone number in the chat before that.
-
-They are the same event — a real lead was delivered — so they cost the same
-and they are written the same way. Splitting them into two prices is the
-mistake that would matter: if revealing a number were cheaper than accepting a
-job, every tradesman's best move would be to send his number and never accept
-anything, and the platform would earn the smaller number on every job it ever
-brokered instead of the larger one.
+A lead is charged for exactly once, at the moment the two of them shake hands
+and the job is created — that is when a real lead was delivered, and nothing
+before it is one. Money leaving a tradesman's balance is the part of this
+system that has to be auditable years later, so it moves through here and
+nowhere else: the balance and the ledger row that explains it are written
+together or not at all.
 """
 
 from __future__ import annotations
@@ -61,10 +55,10 @@ def charge(
     """Take the fee and write the row that explains it, together.
 
     **A short balance never refuses.** The balance is allowed to go negative
-    and the debt recorded: on the handshake there are two people who have just
-    agreed, and on a reveal the number is already out of the bag by the time
-    anybody could refuse. The pressure belongs upstream, at M5, where the
-    person stopped is the one who can fix it.
+    and the debt recorded: two people have just agreed on a price, and refusing
+    at that moment breaks the only flow that earns the platform anything. The
+    pressure belongs upstream, at M5, where the person stopped is the one who
+    can fix it.
     """
     credit = db.execute(
         select(CreditAccount).where(CreditAccount.provider_id == provider.id)

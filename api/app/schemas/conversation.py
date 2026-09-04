@@ -78,13 +78,6 @@ class ConversationOut(ApiModel):
     sealed_at: datetime | None = None
     job_id: int | None = None
 
-    #: Set once the tradesman paid the lead fee to hand over a contact. From
-    #: then on nothing is struck out of either side's messages.
-    lead_charged_at: datetime | None = None
-    #: What it would cost him to do that. The screen states it before he can
-    #: be charged for it, and it is the same fee the handshake charges.
-    contact_fee_centimes: int
-
     last_message_at: datetime | None = None
 
 
@@ -101,10 +94,6 @@ class UnreadOut(BaseModel):
 
 class NewMessageIn(BaseModel):
     body: str = Field(default="", max_length=MAX_MESSAGE)
-    #: The tradesman agreeing to the lead fee for a message that carries his
-    #: number. Without it such a message is refused with the price, never
-    #: charged silently.
-    accept_charge: bool = False
     #: The `path` an upload returned. Never a URL the client made up.
     attachment_path: str | None = Field(default=None, max_length=500)
     attachment_name: str | None = Field(default=None, max_length=255)

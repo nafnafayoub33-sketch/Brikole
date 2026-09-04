@@ -14,17 +14,22 @@ from sqlalchemy.orm import Session
 
 from app.core.enums import Role, UserStatus
 from app.core.errors import DomainError, ErrorCode
+from app.core.policy import SettingKey
 from app.core.report import (
     SUSPENSION_HOURS,
     ReportOutcome,
+    ReportReason,
     ReportStatus,
     ReportTarget,
     can_hide,
+    should_flag_contact_sharing,
     validate_report,
 )
 from app.models.base import utcnow
 from app.models.dispute import Report
 from app.models.user import User
+from app.repositories.catalog import SettingsRepository
+from app.repositories.conversations import ConversationRepository
 from app.repositories.reports import ReportRepository
 from app.schemas.report import HandleReportIn, NewReportIn
 from app.services import audit
@@ -72,6 +77,45 @@ class ReportService:
         self.db.add(report)
         self.db.commit()
         self.db.refresh(report)
+        return report
+
+    # -- filed by the platform itself ------------------------------------
+
+    def flag_contact_sharing(self, provider_id: int) -> Report | None:
+        """Put a tradesman in front of staff if he keeps handing out contacts.
+
+        Called after a message of his was struck, and it does **not** commit:
+        the flag belongs to the same transaction as the message that earned
+        it, or the count it was based on is not the count that was there.
+
+        Returns the report when one was filed, `None` when he is under the
+        threshold or is already flagged. Nothing here punishes him — no
+        suspension, no fee, no message he can see. A person decides what this
+        means; this only makes sure a person gets to look.
+        """
+        seen = ConversationRepository(self.db).clients_he_sent_a_contact_to(provider_id)
+        threshold = SettingsRepository(self.db).get_int(SettingKey.CONTACT_FLAG_THRESHOLD)
+        reason = ReportReason.CONTACT_SHARING.value
+
+        if not should_flag_contact_sharing(
+            distinct_clients=seen,
+            threshold=threshold,
+            already_open=self.repo.platform_flag_is_open(reason, provider_id),
+        ):
+            return None
+
+        report = Report(
+            reporter_id=None,
+            target_type=ReportTarget.PROVIDER_PROFILE.value,
+            target_id=provider_id,
+            reason=reason,
+            # The count, and nothing else. A staff member needs to know how
+            # far past the line he is — but the sentence around the number is
+            # the web app's to write, in the language that person reads.
+            description=str(seen),
+            status=ReportStatus.OPEN.value,
+        )
+        self.db.add(report)
         return report
 
     def _refuse_self_report(

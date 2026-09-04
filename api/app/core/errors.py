@@ -45,9 +45,6 @@ class ErrorCode(StrEnum):
 
     # money
     INSUFFICIENT_CREDIT = "insufficient_credit"
-    #: Not a refusal — a price. The message contains a contact detail, which
-    #: costs the lead fee; the caller resends with `accept_charge` to agree.
-    CONTACT_COSTS_CREDIT = "contact_costs_credit"
     AMOUNT_INVALID = "amount_invalid"
 
 
@@ -73,7 +70,6 @@ _STATUS: dict[ErrorCode, int] = {
     ErrorCode.ROLE_NOT_SELF_REGISTERABLE: 403,
     ErrorCode.FORBIDDEN: 403,
     ErrorCode.INSUFFICIENT_CREDIT: 402,
-    ErrorCode.CONTACT_COSTS_CREDIT: 402,
     ErrorCode.NOT_FOUND: 404,
 }
 

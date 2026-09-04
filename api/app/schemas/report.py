@@ -39,7 +39,10 @@ class ReportOut(ApiModel):
     status: str
     created_at: datetime
 
-    reporter_id: int
+    #: Null when the platform filed it rather than a person. The screen says
+    #: so in words: "flagged automatically" carries different weight from an
+    #: accusation with a name on it.
+    reporter_id: int | None
     reporter_name: str | None
 
     handled_by_name: str | None

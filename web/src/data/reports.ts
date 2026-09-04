@@ -6,10 +6,16 @@ import { api } from '@/data/client'
 import type { Page } from '@/data/types'
 
 export type ReportTarget = 'provider_profile' | 'review'
-export type ReportReason = 'spam' | 'offensive' | 'fake' | 'wrong_info' | 'other'
+/** A reason a person can pick when filing. */
+export type FilableReason = 'spam' | 'offensive' | 'fake' | 'wrong_info' | 'other'
+
+/** Every reason a report can arrive with. `contact_sharing` is filed by the
+ *  platform and by nobody else, so it is readable but never offered — which
+ *  is why the two types are not one. */
+export type ReportReason = FilableReason | 'contact_sharing'
 export type ReportOutcome = 'dismissed' | 'content_hidden' | 'warned' | 'suspended'
 
-export const REPORT_REASONS: ReportReason[] = [
+export const REPORT_REASONS: FilableReason[] = [
   'spam',
   'offensive',
   'fake',
@@ -44,7 +50,8 @@ export interface Report {
   description: string | null
   status: string
   created_at: string
-  reporter_id: number
+  /** Null when the platform filed it rather than a person. */
+  reporter_id: number | null
   reporter_name: string | null
   handled_by_name: string | null
   handled_at: string | null

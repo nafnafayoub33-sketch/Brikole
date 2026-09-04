@@ -5,7 +5,7 @@ import { useSession } from '@/data/auth'
 import {
   REPORT_REASONS,
   useFileReport,
-  type ReportReason,
+  type FilableReason,
   type ReportTarget,
 } from '@/data/reports'
 import { Alert } from '@/ui/Alert'
@@ -13,7 +13,7 @@ import { Button } from '@/ui/Button'
 import { ErrorState } from '@/ui/ErrorState'
 import { cn } from '@/ui/cn'
 
-const REASON_KEYS: Record<ReportReason, string> = {
+const REASON_KEYS: Record<FilableReason, string> = {
   spam: 'report.reasonSpam',
   offensive: 'report.reasonOffensive',
   fake: 'report.reasonFake',
@@ -45,7 +45,7 @@ export function ReportButton({
   const file = useFileReport()
 
   const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState<ReportReason | null>(null)
+  const [reason, setReason] = useState<FilableReason | null>(null)
   const [description, setDescription] = useState('')
 
   const role = session.data?.role
@@ -141,7 +141,7 @@ export function ReportButton({
             file.mutate({
               target_type: targetType,
               target_id: targetId,
-              reason: reason as ReportReason,
+              reason: reason as FilableReason,
               description: description.trim() || null,
             })
           }

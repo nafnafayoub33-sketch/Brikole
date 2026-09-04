@@ -71,7 +71,7 @@ def handle_report(
 
 
 def _out(service: ReportService, report: Report) -> ReportOut:
-    reporter = service.repo.user(report.reporter_id)
+    reporter = service.repo.user(report.reporter_id) if report.reporter_id else None
     handler = service.repo.user(report.handled_by_id) if report.handled_by_id else None
 
     return ReportOut(

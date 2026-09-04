@@ -42,8 +42,8 @@ from app.models.provider import ProviderProfile
 from app.models.request import ServiceRequest
 from app.models.user import User
 from app.repositories.conversations import ConversationRepository
-from app.services import lead_fee
 from app.services.jobs import JobService
+from app.services.reports import ReportService
 
 
 #: What a system line records. Rendered by the web app in the reader's own
@@ -54,7 +54,6 @@ class SystemLine:
     AGREED = "conversation.agreed"
     WITHDREW = "conversation.withdrew"
     SEALED = "conversation.sealed"
-    CONTACT_PAID = "conversation.contact_paid"
 
 
 class ConversationService:
@@ -145,25 +144,20 @@ class ConversationService:
         attachment_name: str | None = None,
         attachment_bytes: int | None = None,
         kind: MessageKind = MessageKind.TEXT,
-        accept_charge: bool = False,
     ) -> Message:
-        """Send one message, and charge for it if it hands over a contact.
+        """Send one message. A contact detail in it is struck out, quietly.
 
-        The rule this replaces struck every contact out of every message. It
-        worked, and it fought the user: the tradesman wants to give his number
-        because a phone call settles in a minute what the chat settles in an
-        hour, and the platform's objection is not that he talks to the client
-        — it is that it earns nothing when he does.
+        Nothing is refused and nothing is charged. He types his number, the
+        message goes, and the number is not in it — the bubble says a contact
+        was removed so he is not left waiting for a call that was never going
+        to come. Refusing the message outright would only teach him to write
+        `zero six`, and pricing it would put a paywall in the middle of a
+        conversation two people are having in good faith.
 
-        So he may. It costs him the lead fee, once, for this client, and the
-        message goes through with the number in it. That is the same event as
-        accepting a job, priced the same, and the handshake afterwards knows
-        not to charge him again.
-
-        The **client** is still redacted, and the asymmetry is not an oversight:
-        she has no balance to charge, so blocking is the only lever there is on
-        her side, and she has no reason to want off the platform anyway — she
-        pays it nothing.
+        What the platform does instead is *count*. A tradesman who tries this
+        with one client is answering a question; one who tries it with twenty
+        is running his business off the back of the platform, and that is what
+        `ContactWatch` is for.
         """
         conversation = self.get_own(user, conversation_id)
 
@@ -175,18 +169,13 @@ class ConversationService:
         if not text and attachment_path is None:
             raise DomainError(ErrorCode.VALIDATION_FAILED, field="body")
 
+        # Once the job exists the platform has been paid, so there is nothing
+        # left to protect: they have each other's number on C4 already, and
+        # striking one out of a message here would be pure superstition.
         removed = 0
-        if self._contacts_are_open(conversation):
-            # Paid for, or the job exists. Either way the platform has been
-            # paid for this lead and striking a number out now is superstition.
-            pass
-        elif conversation.client_id == user.id:
+        if conversation.sealed_at is None:
             cleaned = redact(text)
             text, removed = cleaned.text, cleaned.count
-        else:
-            text, removed = self._provider_writes(
-                user, conversation, text, accept_charge=accept_charge
-            )
 
         message = Message(
             conversation_id=conversation.id,
@@ -202,52 +191,17 @@ class ConversationService:
         conversation.last_message_at = utcnow()
         self._mark_own_read(user, conversation)
 
+        if removed and conversation.client_id != user.id:
+            # Flushed first: the count is taken over messages, and this one is
+            # part of it. Filed inside the same transaction as the message it
+            # was counted from — a flag standing on a message that rolled back
+            # is an accusation with nothing behind it.
+            self.db.flush()
+            ReportService(self.db).flag_contact_sharing(conversation.provider_id)
+
         self.db.commit()
         self.db.refresh(message)
         return message
-
-    def _provider_writes(
-        self, user: User, conversation: Conversation, text: str, *, accept_charge: bool
-    ) -> tuple[str, int]:
-        """His message, and what it costs him if it carries a contact."""
-        cleaned = redact(text)
-        if cleaned.clean:
-            return text, 0
-
-        offer = self.db.get(Offer, conversation.offer_id)
-        request = self.db.get(ServiceRequest, conversation.request_id)
-        provider = self.db.get(ProviderProfile, conversation.provider_id)
-        if offer is None or request is None or provider is None:
-            raise DomainError(ErrorCode.NOT_FOUND)
-
-        if not accept_charge:
-            # Not a refusal — a price he has not agreed to yet. He is never
-            # charged for a message he did not know would cost anything.
-            raise DomainError(
-                ErrorCode.CONTACT_COSTS_CREDIT,
-                fee_centimes=lead_fee.fee_for(self.db, request),
-            )
-
-        taken = lead_fee.charge(
-            self.db,
-            provider=provider,
-            offer=offer,
-            request=request,
-            reason="contact_revealed",
-        )
-        # Frozen onto the offer, exactly as the handshake would have done, so
-        # the seal reads it and does not charge a second time.
-        offer.lead_fee_centimes = taken.fee_centimes
-        conversation.lead_charged_at = utcnow()
-
-        self._system(
-            conversation, SystemLine.CONTACT_PAID, by=user.id, price_centimes=taken.fee_centimes
-        )
-        return text, 0
-
-    @staticmethod
-    def _contacts_are_open(conversation: Conversation) -> bool:
-        return conversation.sealed_at is not None or conversation.lead_charged_at is not None
 
     # -- the handshake ---------------------------------------------------
 

@@ -40,8 +40,10 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
-# Alembic generates these; the line length is its formatting, not ours.
-"migrations/versions/*.py" = ["E501"]
+# Alembic generates these. The line length is its formatting, not ours, and
+# its template hands every file the same imports whether the generated body
+# happens to use them or not — `sa` here, `mysql` in a downgrade there.
+"migrations/versions/*.py" = ["E501", "F401"]
 
 [tool.mypy]
 python_version = "3.11"

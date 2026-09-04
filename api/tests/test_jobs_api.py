@@ -161,11 +161,11 @@ def test_the_fee_is_taken_with_a_ledger_row_behind_it(client, api_prefix, db, st
     accept(client, api_prefix, stage)
 
     account = db.query(CreditAccount).filter_by(provider_id=stage["winner"].id).one()
-    assert account.balance_centimes == dirhams(40)  # 50 - the 10 DH default
+    assert account.balance_centimes == dirhams(45)  # 50 - the 5 DH default
 
     row = db.query(CreditTransaction).filter_by(account_id=account.id).one()
-    assert row.amount_centimes == -dirhams(10)
-    assert row.balance_after_centimes == dirhams(40)
+    assert row.amount_centimes == -dirhams(5)
+    assert row.balance_after_centimes == dirhams(45)
     assert row.reason == "offer_accepted"
     assert row.job_id is not None
 
@@ -193,7 +193,7 @@ def test_an_empty_balance_does_not_block_the_client(client, api_prefix, db, stag
 
     db.expire_all()
     account = db.query(CreditAccount).filter_by(provider_id=stage["winner"].id).one()
-    assert account.balance_centimes == -dirhams(10)
+    assert account.balance_centimes == -dirhams(5)
 
 
 def test_a_second_acceptance_is_refused(client, api_prefix, stage):
@@ -324,7 +324,7 @@ def test_the_tradesman_sees_what_the_lead_cost_him(client, api_prefix, assigned)
     job = client.get(
         f"{api_prefix}/jobs/{assigned['job_id']}", headers=auth(pro_token(client, api_prefix))
     ).json()
-    assert job["lead_fee_centimes"] == dirhams(10)
+    assert job["lead_fee_centimes"] == dirhams(5)
     assert job["client"]["phone"] == "+212611111111"
 
 

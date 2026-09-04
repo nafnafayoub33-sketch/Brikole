@@ -9,13 +9,25 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.enums import JobStatus, OfferStatus, RequestStatus, Role, TransactionType
+from app.core.enums import (
+    JobStatus,
+    OfferStatus,
+    RequestStatus,
+    Role,
+    TransactionType,
+    UserStatus,
+)
 from app.core.money import dirhams
+from app.core.policy import SettingKey
+from app.core.report import ReportReason
 from app.models.conversation import Message
 from app.models.credit import CreditAccount, CreditTransaction
+from app.models.dispute import Report
 from app.models.job import Job
 from app.models.offer import Offer
+from app.models.provider import ProviderProfile
 from app.models.request import ServiceRequest
+from app.models.system import PlatformSetting
 from tests.test_auth_api import auth, make_user, token_for
 from tests.test_offers_api import stage  # noqa: F401 — the fixture is the point
 
@@ -125,27 +137,51 @@ class TestOpening:
 # -- the phone number -------------------------------------------------------
 
 
-class TestTheClientsNumber:
-    """She has no balance to charge, so blocking is the only lever there is —
-    and she has no reason to want off the platform: she pays it nothing."""
+class TestEitherSidesNumber:
+    """Neither of them gets one through. The rule is symmetric and quiet: the
+    message is delivered, the contact is not in it, and nobody is refused or
+    charged for trying."""
 
     def test_no_phone_number_anywhere_in_the_thread(self, client, api_prefix, talking):
         body = thread(client, api_prefix, talking, as_client(talking)).text
         assert "+2127" not in body
         assert "phone" not in body
 
-    def test_hers_is_struck_out(self, client, api_prefix, talking):
+    @pytest.mark.parametrize("who", ["client", "pro"])
+    def test_it_is_struck_out(self, client, api_prefix, talking, who):
+        headers = as_client(talking) if who == "client" else as_pro(talking)
         sent = send(
-            client, api_prefix, talking, as_client(talking), "mon num 06 12 34 56 78"
+            client, api_prefix, talking, headers, "mon num 06 12 34 56 78"
         ).json()
         assert sent["redacted_count"] == 1
         assert "0612345678" not in sent["body"].replace(" ", "")
+
+    @pytest.mark.parametrize("who", ["client", "pro"])
+    def test_sending_one_is_never_refused_and_never_costs(
+        self, client, api_prefix, db, talking, who
+    ):
+        """`ghir maybanch` — it goes, it just does not show. A 402 in the
+        middle of a conversation two people are having in good faith is a
+        paywall; this is a rule they can find out about by using the thing."""
+        headers = as_client(talking) if who == "client" else as_pro(talking)
+        response = send(client, api_prefix, talking, headers, "3eyet liya f 0612345678")
+
+        assert response.status_code == 201
+        assert db.query(CreditTransaction).count() == 0
 
     def test_the_message_is_still_delivered(self, client, api_prefix, talking):
         """Refusing it would teach people to write `zero six`."""
         send(client, api_prefix, talking, as_client(talking), "appelle 0612345678 stp")
         body = thread(client, api_prefix, talking, as_pro(talking)).json()
         assert any("appelle" in row["body"] for row in body["messages"])
+
+    def test_the_sender_is_told_it_was_removed(self, client, api_prefix, talking):
+        """Quiet is not secret. Without the count on the bubble he waits for a
+        call that was never going to come."""
+        sent = send(
+            client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678"
+        ).json()
+        assert sent["redacted_count"] == 1
 
     def test_it_is_not_stored(self, client, api_prefix, db, talking):
         send(client, api_prefix, talking, as_client(talking), "3eyet f 0612345678")
@@ -155,83 +191,28 @@ class TestTheClientsNumber:
         assert "3eyet f" in stored
 
 
-class TestTheTradesmansNumber:
-    """He may hand it over. It costs him the lead fee, once, for this client —
-    the same event as accepting a job, priced the same."""
-
-    def test_it_is_refused_until_he_agrees_to_the_price(
+class TestTheHandshakeCharges:
+    def test_the_fee_is_taken_once_when_the_job_is_created(
         self, client, api_prefix, db, talking
     ):
-        response = send(
-            client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678"
-        )
-
-        assert response.status_code == 402
-        body = response.json()
-        assert body["code"] == "contact_costs_credit"
-        assert body["details"]["fee_centimes"] == dirhams(10)
-        # Nothing was sent and nothing was taken.
-        assert db.query(CreditTransaction).count() == 0
-
-    def test_agreeing_sends_it_whole_and_charges_the_fee(
-        self, client, api_prefix, db, talking
-    ):
-        sent = send(
-            client,
-            api_prefix,
-            talking,
-            as_pro(talking),
-            "3eyet liya f 0612345678",
-            accept_charge=True,
-        ).json()
-
-        assert sent["redacted_count"] == 0
-        assert "0612345678" in sent["body"]
-
-        row = db.query(CreditTransaction).one()
-        assert row.amount_centimes == -dirhams(10)
-        assert row.reason == "contact_revealed"
-        assert row.job_id is None
-
-    def test_paying_opens_the_thread_both_ways(self, client, api_prefix, talking):
-        """The platform has been paid for this lead. Striking a number out of
-        her next message would be superstition."""
-        send(
-            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
-        )
-
-        hers = send(
-            client, api_prefix, talking, as_client(talking), "ok, ana f 0698765432"
-        ).json()
-        assert hers["redacted_count"] == 0
-        assert "0698765432" in hers["body"]
-
-    def test_he_pays_once_for_one_client(self, client, api_prefix, db, talking):
-        for _ in range(3):
-            send(
-                client,
-                api_prefix,
-                talking,
-                as_pro(talking),
-                "0612345678",
-                accept_charge=True,
-            )
-
-        assert db.query(CreditTransaction).count() == 1
-
-    def test_the_handshake_afterwards_does_not_charge_him_twice(
-        self, client, api_prefix, db, talking
-    ):
-        """Billing him twice for one client is the fastest way to teach him
-        never to answer a question in the chat again."""
-        send(
-            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
-        )
-
         agree(client, api_prefix, talking, as_client(talking), 1)
         body = agree(client, api_prefix, talking, as_pro(talking), 1).json()
 
         assert body["job_id"] is not None
+        row = db.query(CreditTransaction).one()
+        assert row.amount_centimes == -dirhams(5)
+        assert row.job_id is not None
+
+    def test_talking_about_numbers_first_changes_nothing(
+        self, client, api_prefix, db, talking
+    ):
+        """The chat is free. Only the handshake is not."""
+        send(client, api_prefix, talking, as_pro(talking), "0612345678")
+        send(client, api_prefix, talking, as_client(talking), "0698765432")
+
+        agree(client, api_prefix, talking, as_client(talking), 1)
+        agree(client, api_prefix, talking, as_pro(talking), 1)
+
         assert db.query(CreditTransaction).count() == 1
 
     def test_a_free_lead_covers_it(self, client, api_prefix, db, talking):
@@ -239,42 +220,102 @@ class TestTheTradesmansNumber:
         account.free_leads_left = 2
         db.commit()
 
-        send(
-            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
-        )
-
-        db.expire_all()
-        account = db.query(CreditAccount).one()
-        assert account.free_leads_left == 1
-        assert account.balance_centimes == dirhams(50)
-
-        # The type says a free lead paid for it; the reason says what it was
-        # spent on. Both, because either alone loses half the story.
-        row = db.query(CreditTransaction).one()
-        assert row.type is TransactionType.FREE_LEAD
-        assert row.reason == "contact_revealed"
-
-    def test_a_free_lead_still_closes_the_door_on_the_handshake(
-        self, client, api_prefix, db, talking
-    ):
-        """A free lead freezes zero onto the offer, and zero is a price. The
-        guard has to ask whether it is *set*, not whether it is truthy — the
-        day someone writes `if not offer.lead_fee_centimes` every tradesman on
-        his free leads pays twice."""
-        account = db.query(CreditAccount).one()
-        account.free_leads_left = 2
-        db.commit()
-
-        send(
-            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
-        )
         agree(client, api_prefix, talking, as_client(talking), 1)
         agree(client, api_prefix, talking, as_pro(talking), 1)
 
         db.expire_all()
-        assert db.query(CreditTransaction).count() == 1
         assert db.query(CreditAccount).one().free_leads_left == 1
+        assert db.query(CreditTransaction).one().type is TransactionType.FREE_LEAD
 
+
+class TestTheWatch:
+    """Nothing is refused and nothing is charged, so the enforcement is a
+    count. One tradesman answering a question is not the same event as one
+    tradesman working his way down a list of strangers."""
+
+    def lower_the_threshold(self, db, to):
+        db.add(PlatformSetting(key=SettingKey.CONTACT_FLAG_THRESHOLD, value=to))
+        db.commit()
+
+    def flags(self, db):
+        return (
+            db.query(Report)
+            .filter_by(reason=ReportReason.CONTACT_SHARING.value)
+            .all()
+        )
+
+    def test_one_attempt_flags_nobody_by_default(self, client, api_prefix, db, talking):
+        send(client, api_prefix, talking, as_pro(talking), "0612345678")
+        assert self.flags(db) == []
+
+    def test_past_the_threshold_staff_are_told(self, client, api_prefix, db, talking):
+        self.lower_the_threshold(db, 1)
+        send(client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678")
+
+        flag = self.flags(db)[0]
+        assert flag.target_type == "provider_profile"
+        assert flag.target_id == talking["conversation"]["other"]["id"]
+        assert flag.status == "open"
+
+    def test_the_platform_files_it_under_no_name(self, client, api_prefix, db, talking):
+        """A staff screen reads the missing name as "the system noticed this",
+        which is a different weight from an accusation with somebody behind it."""
+        self.lower_the_threshold(db, 1)
+        send(client, api_prefix, talking, as_pro(talking), "0612345678")
+
+        assert self.flags(db)[0].reporter_id is None
+
+    def test_it_carries_the_count_and_not_a_sentence(
+        self, client, api_prefix, db, talking
+    ):
+        """The number is the finding; the sentence around it belongs to the
+        screen, in the language the person reading it chose."""
+        self.lower_the_threshold(db, 1)
+        send(client, api_prefix, talking, as_pro(talking), "0612345678")
+
+        assert self.flags(db)[0].description == "1"
+
+    def test_he_is_flagged_once_not_once_per_message(
+        self, client, api_prefix, db, talking
+    ):
+        self.lower_the_threshold(db, 1)
+        for _ in range(4):
+            send(client, api_prefix, talking, as_pro(talking), "0612345678")
+
+        assert len(self.flags(db)) == 1
+
+    def test_the_same_client_four_times_counts_once(
+        self, client, api_prefix, db, talking
+    ):
+        """Persistence at one man who is not answering is not a pattern."""
+        self.lower_the_threshold(db, 2)
+        for _ in range(4):
+            send(client, api_prefix, talking, as_pro(talking), "0612345678")
+
+        assert self.flags(db) == []
+
+    def test_the_client_doing_it_flags_nobody(self, client, api_prefix, db, talking):
+        """She is not the one who would take the work off the platform, and
+        her side of the rule exists to protect her, not to police her."""
+        self.lower_the_threshold(db, 1)
+        send(client, api_prefix, talking, as_client(talking), "0612345678")
+
+        assert self.flags(db) == []
+
+    def test_nothing_happens_to_him(self, client, api_prefix, db, talking):
+        """The flag is a person being asked to look, not a punishment. No
+        suspension, no fee, and nothing he can see."""
+        self.lower_the_threshold(db, 1)
+        sent = send(client, api_prefix, talking, as_pro(talking), "0612345678")
+
+        assert sent.status_code == 201
+        assert db.query(CreditTransaction).count() == 0
+        provider = db.get(ProviderProfile, talking["conversation"]["other"]["id"])
+        assert provider is not None
+        assert provider.user.status is UserStatus.ACTIVE
+
+
+class TestWhatTheRuleLeavesAlone:
     def test_an_ordinary_message_costs_nothing_and_needs_no_agreement(
         self, client, api_prefix, db, talking
     ):
@@ -287,12 +328,19 @@ class TestTheTradesmansNumber:
 
         assert db.query(CreditTransaction).count() == 0
 
-    def test_the_screen_is_told_the_price_before_he_can_be_charged(
+    def test_once_the_job_exists_nothing_is_struck_out(
         self, client, api_prefix, talking
     ):
-        body = thread(client, api_prefix, talking, as_pro(talking)).json()
-        assert body["conversation"]["contact_fee_centimes"] == dirhams(10)
-        assert body["conversation"]["lead_charged_at"] is None
+        """They have each other's number on C4 by then. Striking one out of a
+        message here would be superstition."""
+        agree(client, api_prefix, talking, as_client(talking), 1)
+        agree(client, api_prefix, talking, as_pro(talking), 1)
+
+        sent = send(
+            client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678"
+        ).json()
+        assert sent["redacted_count"] == 0
+        assert "0612345678" in sent["body"]
 
 
 # -- the handshake ----------------------------------------------------------

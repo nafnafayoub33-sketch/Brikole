@@ -71,6 +71,22 @@ class ReportRepository:
     def user(self, user_id: int) -> User | None:
         return self.db.get(User, user_id)
 
+    def platform_flag_is_open(self, reason: str, target_id: int) -> bool:
+        """Whether the platform already has an unhandled flag on this profile
+        for this reason. Filing a second is not new information."""
+        return (
+            self.db.execute(
+                select(Report.id).where(
+                    Report.reporter_id.is_(None),
+                    Report.reason == reason,
+                    Report.target_type == ReportTarget.PROVIDER_PROFILE.value,
+                    Report.target_id == target_id,
+                    Report.status == ReportStatus.OPEN.value,
+                )
+            ).first()
+            is not None
+        )
+
     def target_exists(self, target_type: ReportTarget, target_id: int) -> bool:
         """Nothing is filed against a thing that is not there — an empty row in
         the queue is a moderator's wasted minute."""
