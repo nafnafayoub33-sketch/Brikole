@@ -63,10 +63,16 @@ class Conversation(PkMixin, TimestampMixin, Base):
     #: produced hangs off the offer, not off here.
     sealed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    #: Cheap ordering for a future inbox, and what "unread" is measured against.
+    #: Cheap ordering for an inbox. Not what "unread" is measured against —
+    #: see below.
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    client_read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    provider_read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    #: The last message each side has seen, by **id** rather than by clock.
+    #: These columns are DATETIME to the second, so a reply that lands in the
+    #: same second as the read compares as "not newer" and the badge never
+    #: appears. Ids are monotonic and exact, and cost nothing to compare.
+    client_read_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    provider_read_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     offer: Mapped[Offer] = relationship()
     messages: Mapped[list[Message]] = relationship(

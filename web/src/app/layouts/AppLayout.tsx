@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
+import { useUnreadChats } from '@/data/chat'
 import { cn } from '@/ui/cn'
 import { LanguageSelect } from '@/ui/LanguageSelect'
 import { ThemeToggle } from '@/ui/ThemeToggle'
@@ -10,6 +11,9 @@ export interface NavItem {
   to: string
   labelKey: string
   end?: boolean
+  /** Marks the item that owns the chats, so it can carry the unread count.
+   *  Only one item per role has it, and the roles without one never ask. */
+  chats?: boolean
 }
 
 /**
@@ -17,6 +21,10 @@ export interface NavItem {
  */
 export function AppLayout({ items }: { items: NavItem[] }) {
   const { t } = useTranslation()
+
+  // A moderator has no conversations, so his shell never asks for a count.
+  const unread = useUnreadChats(items.some((item) => item.chats))
+  const waiting = unread.data?.count ?? 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -40,6 +48,14 @@ export function AppLayout({ items }: { items: NavItem[] }) {
                 }
               >
                 {t(item.labelKey)}
+                {item.chats && waiting > 0 && (
+                  <span
+                    className="numeric ms-1.5 inline-flex min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-fg"
+                    aria-label={t('nav.unread', { count: waiting })}
+                  >
+                    {waiting}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

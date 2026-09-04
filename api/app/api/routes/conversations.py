@@ -29,6 +29,7 @@ from app.schemas.conversation import (
     NewMessageIn,
     ProposeIn,
     ThreadOut,
+    UnreadOut,
 )
 from app.services.conversations import ConversationService
 
@@ -47,6 +48,14 @@ def open_conversation(offer_id: int, user: CurrentUser, db: DbSession) -> Conver
 
     service = ConversationService(db)
     return _conversation(service.open_for_offer(user, offer_id), user, db)
+
+
+@router.get("/conversations/unread", response_model=UnreadOut, dependencies=[_PARTIES])
+def unread(user: CurrentUser, db: DbSession) -> UnreadOut:
+    """The badge on the nav. Declared before `/conversations/{id}` so the
+    literal path wins over the parameter — the other order makes this a
+    request for a conversation called "unread"."""
+    return UnreadOut(count=ConversationService(db).unread(user))
 
 
 @router.get(

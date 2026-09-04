@@ -86,6 +86,12 @@ class ThreadOut(BaseModel):
     messages: list[MessageOut]
 
 
+class UnreadOut(BaseModel):
+    """How many threads have something in them he has not seen."""
+
+    count: int
+
+
 class NewMessageIn(BaseModel):
     body: str = Field(default="", max_length=MAX_MESSAGE)
     #: The `path` an upload returned. Never a URL the client made up.

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import type { ChatMessage, Conversation } from '@/data/chat'
 import {
   useAgree,
+  useMarkRead,
   usePropose,
   useSendMessage,
   useThread,
@@ -57,6 +58,16 @@ export function Chat({
 }) {
   const { t } = useTranslation()
   const thread = useThread(conversationId)
+  const markRead = useMarkRead(conversationId)
+
+  // Looking at the thread is what clears the badge, and the newest message is
+  // what "looked at" means — so this fires again when one arrives while the
+  // screen is open, not only when it mounts.
+  const newest = thread.data?.messages.at(-1)?.id ?? null
+  const { mutate: markReadNow } = markRead
+  useEffect(() => {
+    if (newest !== null) markReadNow()
+  }, [newest, markReadNow])
 
   if (thread.isPending) {
     return (

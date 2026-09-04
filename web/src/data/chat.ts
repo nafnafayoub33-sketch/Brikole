@@ -86,6 +86,17 @@ export function useThread(conversationId: number | null) {
   })
 }
 
+/** The badge in the nav. Without it the tradesman has no way to learn that a
+ *  client opened a chat on his offer: he sent it and went back to work. */
+export function useUnreadChats(enabled: boolean) {
+  return useQuery({
+    queryKey: [...CHAT_KEY, 'unread'],
+    queryFn: () => api<{ count: number }>('/conversations/unread'),
+    enabled,
+    refetchInterval: POLL_MS * 6,
+  })
+}
+
 /** Tapping an offer on C3. Commits to nothing — it only opens the thread. */
 export function useOpenConversation() {
   const queryClient = useQueryClient()
@@ -94,6 +105,22 @@ export function useOpenConversation() {
       api<Conversation>(`/offers/${offerId}/conversation`, { method: 'POST' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: CHAT_KEY })
+    },
+  })
+}
+
+/** Tell the API he has seen it, so the nav badge lets go.
+ *
+ *  Fired from the screen rather than by the GET: reading a thread is a
+ *  deliberate act, and a `GET` that writes is a `GET` that surprises somebody
+ *  the day it is called from a prefetch. */
+export function useMarkRead(conversationId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api<Conversation>(`/conversations/${conversationId}/read`, { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...CHAT_KEY, 'unread'] })
     },
   })
 }
@@ -109,6 +136,7 @@ export function useSendMessage(conversationId: number) {
     }) => api<ChatMessage>(`/conversations/${conversationId}/messages`, { method: 'POST', body }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...CHAT_KEY, conversationId] })
+      void queryClient.invalidateQueries({ queryKey: [...CHAT_KEY, 'unread'] })
     },
   })
 }

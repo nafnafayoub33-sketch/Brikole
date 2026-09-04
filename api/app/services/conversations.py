@@ -101,6 +101,9 @@ class ConversationService:
         self.db.flush()
 
         self._system(conversation, SystemLine.OPENED)
+        # Opening it is reading it. Without this the client's own first line
+        # comes back to her as one unread thread.
+        self._mark_own_read(user, conversation)
         self.db.commit()
         self.db.refresh(conversation)
         return conversation
@@ -124,11 +127,7 @@ class ConversationService:
 
     def mark_read(self, user: User, conversation_id: int) -> Conversation:
         conversation = self.get_own(user, conversation_id)
-        now = utcnow()
-        if conversation.client_id == user.id:
-            conversation.client_read_at = now
-        else:
-            conversation.provider_read_at = now
+        self._mark_own_read(user, conversation)
         self.db.commit()
         return conversation
 
@@ -200,6 +199,7 @@ class ConversationService:
             by=user.id,
             price_centimes=moved.price_centimes,
         )
+        self._mark_own_read(user, conversation)
         self.db.commit()
         self.db.refresh(conversation)
         return conversation
@@ -212,6 +212,7 @@ class ConversationService:
         signed = agree(self._terms(conversation), as_client=as_client, version=version)
         self._apply(conversation, signed)
         self._system(conversation, SystemLine.AGREED, by=user.id)
+        self._mark_own_read(user, conversation)
 
         if signed.sealed:
             self._seal(conversation)
@@ -226,6 +227,7 @@ class ConversationService:
 
         self._apply(conversation, withdraw(self._terms(conversation), as_client=as_client))
         self._system(conversation, SystemLine.WITHDREW, by=user.id)
+        self._mark_own_read(user, conversation)
 
         self.db.commit()
         self.db.refresh(conversation)
@@ -316,12 +318,15 @@ class ConversationService:
         return message
 
     def _mark_own_read(self, user: User, conversation: Conversation) -> None:
-        """Sending is reading: the sender has plainly seen the thread."""
-        now = utcnow()
+        """Acting is reading: opening the thread, writing in it, moving the
+        price or signing all mean he has plainly just looked at it. Without
+        this every action a person takes comes back to him as unread."""
+        self.db.flush()
+        newest = self.repo.newest_message_id(conversation.id)
         if conversation.client_id == user.id:
-            conversation.client_read_at = now
+            conversation.client_read_message_id = newest
         else:
-            conversation.provider_read_at = now
+            conversation.provider_read_message_id = newest
 
     def _is_party(self, user: User, conversation: Conversation) -> bool:
         if user.role is Role.CLIENT:
@@ -332,6 +337,18 @@ class ConversationService:
         # Staff do not read private conversations. A moderator arbitrating a
         # dispute reads the job and what was filed about it, not the chat.
         return False
+
+    def unread(self, user: User) -> int:
+        """Threads where the other side has written since he last looked.
+
+        The tradesman has no other way to learn that a client opened a chat on
+        his offer: he sent it and went back to work. Without this he has to
+        remember to check M6, which is the same as not being told.
+        """
+        if user.role is Role.CLIENT:
+            return self.repo.unread_for_client(user.id)
+        profile = user.provider_profile
+        return self.repo.unread_for_provider(profile.id) if profile else 0
 
     # -- the job it became -----------------------------------------------
 

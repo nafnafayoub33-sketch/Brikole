@@ -4,7 +4,8 @@ import type { NavItem } from '@/app/layouts/AppLayout'
 
 export const CLIENT_NAV: NavItem[] = [
   { to: '/client/requests/new', labelKey: 'nav.newRequest' },
-  { to: '/client/requests', labelKey: 'nav.myRequests', end: true },
+  // The client reaches C9 from a request, so the count rides here.
+  { to: '/client/requests', labelKey: 'nav.myRequests', end: true, chats: true },
   { to: '/client/jobs', labelKey: 'nav.myJobsNav', end: true },
   { to: '/client/notifications', labelKey: 'nav.notifications' },
   { to: '/client/account', labelKey: 'nav.account' },
@@ -13,7 +14,8 @@ export const CLIENT_NAV: NavItem[] = [
 export const PRO_NAV: NavItem[] = [
   { to: '/pro', labelKey: 'nav.dashboard', end: true },
   { to: '/pro/requests', labelKey: 'nav.requests' },
-  { to: '/pro/offers', labelKey: 'nav.myOffers' },
+  // And the tradesman reaches M12 from his offers.
+  { to: '/pro/offers', labelKey: 'nav.myOffers', chats: true },
   { to: '/pro/jobs', labelKey: 'nav.myJobs' },
   { to: '/pro/credit', labelKey: 'nav.credit' },
   { to: '/pro/account', labelKey: 'nav.account' },

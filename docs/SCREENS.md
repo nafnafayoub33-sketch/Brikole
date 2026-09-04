@@ -371,6 +371,9 @@ side, and the same component draws both.
 - **Once the job exists the redaction stops.** The platform has been paid and
   they have each other's number on C4; striking one out here would be
   superstition.
+- **Looking at the thread is what marks it read**, and the newest message is
+  what "looked at" means — so it fires again when one arrives while the screen
+  is open, not only when it mounts.
 - **States:** loading · empty thread · talking · one signature · both signed
   (the deal card is replaced by a link to the job) · the offer was withdrawn
 - → C4
@@ -382,6 +385,11 @@ The same thread as C9, from the tradesman's side, drawn by the same component.
   thread from every tradesman who saw the request is a spam channel. M6 links
   into the thread once the client has opened it, and says "no reply yet" when
   he has not.
+- **The nav tells him.** He sent an offer and went back to work, so a count of
+  unread threads rides on *Mes offres* — and on *Mes demandes* for the client.
+  A thread he has never opened counts, which is the case the badge exists for:
+  a client tapping his offer writes only a system line, and a rule that watched
+  for messages from the other side would stay silent on exactly that.
 - The rest is C9: the same deal card, the same two signatures, the same rule
   about contacts, and the same second signature that creates the job and
   charges him the lead fee — at the price he actually agreed to, not the one he

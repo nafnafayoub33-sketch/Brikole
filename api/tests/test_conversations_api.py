@@ -344,3 +344,51 @@ def test_the_tradesman_cannot_open_a_conversation_himself(
         headers=as_pro(talking),
     )
     assert response.status_code == 403
+
+
+# -- being told ------------------------------------------------------------
+
+
+def unread(client, api_prefix, headers):
+    return client.get(f"{api_prefix}/conversations/unread", headers=headers).json()["count"]
+
+
+class TestUnread:
+    def test_the_tradesman_is_told_a_client_opened_a_chat(
+        self, client, api_prefix, talking
+    ):
+        """He sent an offer and went back to work. Without this he has to
+        remember to check M6, which is the same as not being told."""
+        assert unread(client, api_prefix, as_pro(talking)) == 1
+
+    def test_the_client_who_opened_it_has_nothing_to_read(
+        self, client, api_prefix, talking
+    ):
+        assert unread(client, api_prefix, as_client(talking)) == 0
+
+    def test_reading_the_thread_clears_it(self, client, api_prefix, talking):
+        client.post(
+            f"{api_prefix}/conversations/{talking['conversation']['id']}/read",
+            headers=as_pro(talking),
+        )
+        assert unread(client, api_prefix, as_pro(talking)) == 0
+
+    def test_a_reply_puts_it_back(self, client, api_prefix, talking):
+        client.post(
+            f"{api_prefix}/conversations/{talking['conversation']['id']}/read",
+            headers=as_pro(talking),
+        )
+        send(client, api_prefix, talking, as_client(talking), "wach momkin ghedda?")
+
+        assert unread(client, api_prefix, as_pro(talking)) == 1
+        # Sending is reading: she has plainly seen the thread she just wrote in.
+        assert unread(client, api_prefix, as_client(talking)) == 0
+
+    def test_the_literal_path_wins_over_the_parameter(self, client, api_prefix, talking):
+        """`/conversations/unread` must not be read as a conversation called
+        "unread" — that is a 422, and a badge that never appears."""
+        response = client.get(
+            f"{api_prefix}/conversations/unread", headers=as_pro(talking)
+        )
+        assert response.status_code == 200
+        assert "count" in response.json()
