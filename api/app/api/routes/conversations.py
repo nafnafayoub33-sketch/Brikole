@@ -31,6 +31,7 @@ from app.schemas.conversation import (
     ThreadOut,
     UnreadOut,
 )
+from app.services import lead_fee
 from app.services.conversations import ConversationService
 
 router = APIRouter(tags=["chat"])
@@ -99,6 +100,7 @@ def send_message(
         user,
         conversation_id,
         body=payload.body,
+        accept_charge=payload.accept_charge,
         attachment_path=payload.attachment_path,
         attachment_name=payload.attachment_name,
         attachment_bytes=payload.attachment_bytes,
@@ -186,6 +188,8 @@ def _conversation(
         provider_agreed=conversation.provider_agreed_version == conversation.version,
         sealed_at=conversation.sealed_at,
         job_id=job.id if job else None,
+        lead_charged_at=conversation.lead_charged_at,
+        contact_fee_centimes=lead_fee.fee_for(db, request),
         last_message_at=conversation.last_message_at,
     )
 

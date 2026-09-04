@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.enums import JobStatus, OfferStatus, RequestStatus, Role
+from app.core.enums import JobStatus, OfferStatus, RequestStatus, Role, TransactionType
 from app.core.money import dirhams
 from app.models.conversation import Message
-from app.models.credit import CreditTransaction
+from app.models.credit import CreditAccount, CreditTransaction
 from app.models.job import Job
 from app.models.offer import Offer
 from app.models.request import ServiceRequest
@@ -125,52 +125,174 @@ class TestOpening:
 # -- the phone number -------------------------------------------------------
 
 
-class TestTheNumber:
+class TestTheClientsNumber:
+    """She has no balance to charge, so blocking is the only lever there is —
+    and she has no reason to want off the platform: she pays it nothing."""
+
     def test_no_phone_number_anywhere_in_the_thread(self, client, api_prefix, talking):
-        """The reason this screen exists. It is on the job payload and on
-        nothing that comes before one."""
         body = thread(client, api_prefix, talking, as_client(talking)).text
         assert "+2127" not in body
         assert "phone" not in body
 
-    def test_a_number_typed_into_the_chat_is_struck_out(
-        self, client, api_prefix, talking
-    ):
-        sent = send(
-            client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678"
-        ).json()
-
-        assert sent["redacted_count"] == 1
-        assert "0612345678" not in sent["body"]
-        assert sent["body"].startswith("3eyet liya f")
-
-    def test_it_is_struck_out_in_both_directions(self, client, api_prefix, talking):
+    def test_hers_is_struck_out(self, client, api_prefix, talking):
         sent = send(
             client, api_prefix, talking, as_client(talking), "mon num 06 12 34 56 78"
         ).json()
         assert sent["redacted_count"] == 1
+        assert "0612345678" not in sent["body"].replace(" ", "")
 
     def test_the_message_is_still_delivered(self, client, api_prefix, talking):
         """Refusing it would teach people to write `zero six`."""
-        send(client, api_prefix, talking, as_pro(talking), "appelle 0612345678 stp")
-        body = thread(client, api_prefix, talking, as_client(talking)).json()
+        send(client, api_prefix, talking, as_client(talking), "appelle 0612345678 stp")
+        body = thread(client, api_prefix, talking, as_pro(talking)).json()
         assert any("appelle" in row["body"] for row in body["messages"])
 
-    def test_the_struck_out_number_is_not_stored(self, client, api_prefix, db, talking):
-        """Keeping it would hand it to anybody who reads the table and make the
-        whole exercise theatre."""
-        send(client, api_prefix, talking, as_pro(talking), "3eyet f 0612345678")
+    def test_it_is_not_stored(self, client, api_prefix, db, talking):
+        send(client, api_prefix, talking, as_client(talking), "3eyet f 0612345678")
 
         stored = " ".join(row.body for row in db.query(Message).all())
         assert "0612345678" not in stored
         assert "3eyet f" in stored
 
-    def test_an_ordinary_price_survives(self, client, api_prefix, talking):
+
+class TestTheTradesmansNumber:
+    """He may hand it over. It costs him the lead fee, once, for this client —
+    the same event as accepting a job, priced the same."""
+
+    def test_it_is_refused_until_he_agrees_to_the_price(
+        self, client, api_prefix, db, talking
+    ):
+        response = send(
+            client, api_prefix, talking, as_pro(talking), "3eyet liya f 0612345678"
+        )
+
+        assert response.status_code == 402
+        body = response.json()
+        assert body["code"] == "contact_costs_credit"
+        assert body["details"]["fee_centimes"] == dirhams(10)
+        # Nothing was sent and nothing was taken.
+        assert db.query(CreditTransaction).count() == 0
+
+    def test_agreeing_sends_it_whole_and_charges_the_fee(
+        self, client, api_prefix, db, talking
+    ):
         sent = send(
-            client, api_prefix, talking, as_pro(talking), "450 DH et je viens à 15h"
+            client,
+            api_prefix,
+            talking,
+            as_pro(talking),
+            "3eyet liya f 0612345678",
+            accept_charge=True,
         ).json()
+
         assert sent["redacted_count"] == 0
-        assert sent["body"] == "450 DH et je viens à 15h"
+        assert "0612345678" in sent["body"]
+
+        row = db.query(CreditTransaction).one()
+        assert row.amount_centimes == -dirhams(10)
+        assert row.reason == "contact_revealed"
+        assert row.job_id is None
+
+    def test_paying_opens_the_thread_both_ways(self, client, api_prefix, talking):
+        """The platform has been paid for this lead. Striking a number out of
+        her next message would be superstition."""
+        send(
+            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
+        )
+
+        hers = send(
+            client, api_prefix, talking, as_client(talking), "ok, ana f 0698765432"
+        ).json()
+        assert hers["redacted_count"] == 0
+        assert "0698765432" in hers["body"]
+
+    def test_he_pays_once_for_one_client(self, client, api_prefix, db, talking):
+        for _ in range(3):
+            send(
+                client,
+                api_prefix,
+                talking,
+                as_pro(talking),
+                "0612345678",
+                accept_charge=True,
+            )
+
+        assert db.query(CreditTransaction).count() == 1
+
+    def test_the_handshake_afterwards_does_not_charge_him_twice(
+        self, client, api_prefix, db, talking
+    ):
+        """Billing him twice for one client is the fastest way to teach him
+        never to answer a question in the chat again."""
+        send(
+            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
+        )
+
+        agree(client, api_prefix, talking, as_client(talking), 1)
+        body = agree(client, api_prefix, talking, as_pro(talking), 1).json()
+
+        assert body["job_id"] is not None
+        assert db.query(CreditTransaction).count() == 1
+
+    def test_a_free_lead_covers_it(self, client, api_prefix, db, talking):
+        account = db.query(CreditAccount).one()
+        account.free_leads_left = 2
+        db.commit()
+
+        send(
+            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
+        )
+
+        db.expire_all()
+        account = db.query(CreditAccount).one()
+        assert account.free_leads_left == 1
+        assert account.balance_centimes == dirhams(50)
+
+        # The type says a free lead paid for it; the reason says what it was
+        # spent on. Both, because either alone loses half the story.
+        row = db.query(CreditTransaction).one()
+        assert row.type is TransactionType.FREE_LEAD
+        assert row.reason == "contact_revealed"
+
+    def test_a_free_lead_still_closes_the_door_on_the_handshake(
+        self, client, api_prefix, db, talking
+    ):
+        """A free lead freezes zero onto the offer, and zero is a price. The
+        guard has to ask whether it is *set*, not whether it is truthy — the
+        day someone writes `if not offer.lead_fee_centimes` every tradesman on
+        his free leads pays twice."""
+        account = db.query(CreditAccount).one()
+        account.free_leads_left = 2
+        db.commit()
+
+        send(
+            client, api_prefix, talking, as_pro(talking), "0612345678", accept_charge=True
+        )
+        agree(client, api_prefix, talking, as_client(talking), 1)
+        agree(client, api_prefix, talking, as_pro(talking), 1)
+
+        db.expire_all()
+        assert db.query(CreditTransaction).count() == 1
+        assert db.query(CreditAccount).one().free_leads_left == 1
+
+    def test_an_ordinary_message_costs_nothing_and_needs_no_agreement(
+        self, client, api_prefix, db, talking
+    ):
+        """The rule has to be quiet on everything that is not a contact, or a
+        tradesman quoting a price learns to distrust the box."""
+        for text in ("450 DH et je viens à 15h", "prix 2000dh", "nji f rab3a"):
+            sent = send(client, api_prefix, talking, as_pro(talking), text).json()
+            assert sent["redacted_count"] == 0
+            assert sent["body"] == text
+
+        assert db.query(CreditTransaction).count() == 0
+
+    def test_the_screen_is_told_the_price_before_he_can_be_charged(
+        self, client, api_prefix, talking
+    ):
+        body = thread(client, api_prefix, talking, as_pro(talking)).json()
+        assert body["conversation"]["contact_fee_centimes"] == dirhams(10)
+        assert body["conversation"]["lead_charged_at"] is None
 
 
 # -- the handshake ----------------------------------------------------------

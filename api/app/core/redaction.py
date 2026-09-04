@@ -38,8 +38,15 @@ _MAYBE_NUMBER = re.compile(r"\+?\d[\d\s./\-()]{5,}\d")
 #: Moroccan landline and mobile, with or without the country code.
 _MOROCCAN = re.compile(r"^(?:\+?212|00212|0)?[5-7]\d{8}$")
 
-#: Any long run of digits — a foreign number, a WhatsApp id.
+#: A run this long is a phone number rather than a quantity — but only when
+#: it is written as one. `2000 3000 4000` is three prices, and it collapses to
+#: twelve digits like a number would.
 _LONG_ENOUGH = 9
+
+#: How a number that is not Moroccan still announces itself: a country code, or
+#: a national trunk zero. Without one of these a long run has to be unbroken to
+#: count, which is what keeps a list of prices out of it.
+_DIALS = re.compile(r"^(?:\+|00|0)")
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+", re.UNICODE)
 
@@ -121,9 +128,20 @@ def redact(message: str) -> Redacted:
     text = _HANDLE.sub(strike, text)
 
     def strike_number(match: re.Match[str]) -> str:
-        digits = re.sub(r"\D", "", match.group())
-        if _MOROCCAN.match(digits) or len(digits) >= _LONG_ENOUGH:
+        raw = match.group()
+        digits = re.sub(r"\D", "", raw)
+
+        if _MOROCCAN.match(digits):
             return strike(match)
+
+        if len(digits) >= _LONG_ENOUGH and (
+            _DIALS.match(raw.strip()) or digits == raw.strip()
+        ):
+            # Long, and either dialled or written unbroken. A row of prices is
+            # neither, and a tradesman quoting three of them must not be told
+            # his message costs money.
+            return strike(match)
+
         return match.group()
 
     text = _MAYBE_NUMBER.sub(strike_number, text)

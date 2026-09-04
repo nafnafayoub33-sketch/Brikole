@@ -30,18 +30,31 @@ client money: the client pays the tradesman directly, in cash.
 
 ## The rule the product is built around
 
-**No contact detail reaches the other side until both have agreed.** The platform
-earns its dirham when a lead becomes a job, and only if the job goes through the
-platform; a phone number handed over early is the business model walking out of the
-door. So:
+**No contact detail reaches the other side until the lead has been paid for.** The
+platform earns its dirham when a lead is delivered, and a phone number handed over
+before that is the business model walking out of the door. Note what the rule is
+*not*: it is not "no contact detail, ever". A tradesman who wants to call the client
+now is allowed to — he pays for the lead now instead of at the handshake. So:
 
 - The tradesman's phone number is on the **job** payload and on no other. Never on a
-  profile, never on an offer, never in a chat message. If a screen needs a way to
-  reach somebody and no job exists, the answer is that it does not get one.
+  profile, never on an offer, never in a chat message the fee has not been paid on.
+  If a screen needs a way to reach somebody and no lead has been paid for, the answer
+  is that it does not get one.
 - The chat between them (C9 / M12) strikes numbers, emails, links and `@handles` out
   of every message in both directions, including numbers spelled in words and typed
   in Arabic-Indic digits. The message is still delivered, with the contact struck
   out; the struck contact is never stored.
+- **A tradesman can buy his way past it, once.** Sending a contact is refused with
+  the price rather than charged silently; if he agrees, the lead fee is taken, the
+  message goes whole, and from then on the thread carries contacts freely in both
+  directions. He is never charged twice for the same client: the handshake afterwards
+  creates the job for free.
+- **It is the same fee, never a cheaper one.** If revealing a number cost less than
+  accepting a job, every tradesman's best move would be to send his number and never
+  accept anything, and the platform would earn the smaller number on every job it
+  ever brokered. One lead, one price, whichever door he leaves by.
+- The client is never charged and her number is struck out until he has paid. She has
+  no balance to take a fee from, and she is not the one being sold a lead.
 - That redaction is a **deterrent**, not a wall — somebody can photograph a card. The
   wall is the schema, and the schema is what must never be loosened.
 - A job exists only when **both** sides have signed the same version of the deal. Any

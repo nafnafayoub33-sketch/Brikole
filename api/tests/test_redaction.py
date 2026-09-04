@@ -34,9 +34,15 @@ class TestNumbers:
         assert MARK in result.text
         assert "612345678" not in result.text.replace(" ", "")
 
-    def test_a_foreign_number_goes_too(self):
-        """A client abroad hiring for his mother's flat is still a lead."""
-        assert redact("+33 6 12 34 56 78").count == 1
+    @pytest.mark.parametrize(
+        "message", ["+33 6 12 34 56 78", "00212612345678", "212612345678"]
+    )
+    def test_a_foreign_number_goes_too(self, message):
+        """A client abroad hiring for his mother's flat is still a lead. It
+        counts when it is dialled — a country code or a trunk zero — or when
+        it is written unbroken; that is what separates it from a row of
+        prices, which is long in digits and neither of those things."""
+        assert redact(message).count == 1
 
     def test_the_sentence_around_it_survives(self):
         """Refusing the message would teach people to write `zero six`."""
@@ -54,6 +60,13 @@ class TestWhatMustNotFire:
             "viens le 26 aout 2026 vers 15h",
             "j'ai 3 enfants et 2 chats",
             "الثمن 1200 درهم",
+            # Three prices collapse to twelve digits and look like a number.
+            # A tradesman quoting a list must never be told it costs money.
+            "kayn 2000 3000 4000 dh",
+            "1500 2000 2500 3000 dh",
+            "prix 2000dh",
+            "rab3a d nhar",
+            "7it ma3endich lwa9t",
             "deux cent cinquante dirhams",
             "viens vers deux ou trois heures",
             "2 m x 3 m",

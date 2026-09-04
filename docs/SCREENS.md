@@ -172,10 +172,11 @@ Trades & cities · Settings · Audit log.
   upstream — M5 refuses to send an offer without credit — so a shortfall here is
   the narrow case where the fee changed, or the balance was spent, while they
   were talking.
-- **The tradesman's phone number appears here and nowhere earlier.** Not on P3,
-  not on C3, and not in the chat that led here — C9 strikes contacts out of
-  every message until this screen exists. Before both have signed, nobody has
-  agreed to anything and the platform has not been paid.
+- **The tradesman's phone number appears here and nowhere the fee has not been
+  paid.** Not on P3, not on C3, and not in the chat that led here — C9 strikes
+  contacts out of every message until the lead has been paid for, by this
+  screen existing or by him choosing to pay for it earlier. Before that, nobody
+  has agreed to anything and the platform has not been paid.
 - **Who may move it where is not symmetric.** The tradesman starts and finishes;
   the client confirms. Neither owns the other's arrow, and a client cannot cancel
   once the work is done — that is what C8 is for.
@@ -350,6 +351,26 @@ side, and the same component draws both.
   teach people to write `zero six` and lose the sentence around it. The struck
   contact is **never stored**; only a count of how many were removed, which is
   what a moderator reads as somebody trying repeatedly.
+- **The tradesman can buy his way past it, once.** He may want to call her
+  today rather than type; that is a real lead being delivered, so it costs the
+  lead fee. His message is refused with the price rather than charged silently
+  — a banner names the amount before he types, and a card asks again on the
+  message that carries the number. If he agrees, the fee is taken, the message
+  goes whole, and the thread carries contacts freely in **both** directions
+  from then on. He is charged **once for this client**: the handshake afterwards
+  creates the job without charging him again.
+- **It is the same fee at either door.** Revealing a contact is not a cheaper
+  side entrance to the same lead — if it were, his best move would be to send
+  his number and never accept anything, and the platform would collect the
+  smaller number on every job it brokered.
+- **The client is never charged**, and her number is struck out until he has
+  paid. She has no balance to take a fee from, and she is not the one being
+  sold a lead. The banner on her side says so, so the silence is not read as a
+  bug.
+- **What must not fire.** `prix 2000dh`, `1500 2000 2500 3000 dh`, `rab3a d
+  nhar`, `2 m x 3 m` and a date are ordinary talk. A rule that eats prices is
+  switched off within a week, and a tradesman quoting a list must never be told
+  it costs money.
 - **This is a deterrent, not a wall.** Somebody determined can photograph a
   business card. The wall is structural and elsewhere: the tradesman's phone
   number is on the job payload and on nothing that exists before one.
@@ -368,14 +389,15 @@ side, and the same component draws both.
 - **Messages carry photos and documents** (JPEG, PNG, WebP, PDF) in the private
   bucket, readable only by the two people in that conversation — membership is
   asked of the database, never inferred from the folder name.
-- **Once the job exists the redaction stops.** The platform has been paid and
-  they have each other's number on C4; striking one out here would be
-  superstition.
+- **Once the lead is paid for the redaction stops** — whether it was paid by
+  the handshake or by the reveal. The platform has been paid and they have each
+  other's number on C4; striking one out here would be superstition.
 - **Looking at the thread is what marks it read**, and the newest message is
   what "looked at" means — so it fires again when one arrives while the screen
   is open, not only when it mounts.
-- **States:** loading · empty thread · talking · one signature · both signed
-  (the deal card is replaced by a link to the job) · the offer was withdrawn
+- **States:** loading · empty thread · talking · contacts still struck ·
+  quoted for a contact · contacts open · one signature · both signed (the deal
+  card is replaced by a link to the job) · the offer was withdrawn
 - → C4
 
 ### M12 · Chat with a client — `/pro/chats/:conversationId` ⭐
@@ -390,10 +412,15 @@ The same thread as C9, from the tradesman's side, drawn by the same component.
   A thread he has never opened counts, which is the case the badge exists for:
   a client tapping his offer writes only a system line, and a rule that watched
   for messages from the other side would stay silent on exactly that.
-- The rest is C9: the same deal card, the same two signatures, the same rule
-  about contacts, and the same second signature that creates the job and
-  charges him the lead fee — at the price he actually agreed to, not the one he
-  guessed before seeing the photos.
+- **He is the one with a balance**, so he is the one the contact rule offers a
+  price to. The banner states the fee before he writes anything; the quote card
+  states it again on the message that carries the number; agreeing takes it and
+  opens the thread both ways. A short balance does not refuse him — the number
+  is out of the bag by then — it goes negative and M5 is where he is stopped.
+- The rest is C9: the same deal card, the same two signatures, and the same
+  second signature that creates the job — at the price he actually agreed to,
+  not the one he guessed before seeing the photos — charging him the lead fee
+  unless the reveal already did.
 
 # 4. Moderator — `/mod`
 

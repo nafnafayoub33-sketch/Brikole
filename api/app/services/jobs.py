@@ -21,10 +21,8 @@ from app.core.enums import (
     Role,
 )
 from app.core.errors import DomainError, ErrorCode
-from app.core.job import can_move, charge_for_lead
-from app.core.policy import SettingKey, lead_fee_for
+from app.core.job import can_move
 from app.models.base import utcnow
-from app.models.credit import CreditAccount, CreditTransaction
 from app.models.job import Job, Review
 from app.models.offer import Offer
 from app.models.provider import ProviderProfile
@@ -34,6 +32,7 @@ from app.repositories.catalog import SettingsRepository
 from app.repositories.jobs import JobRepository
 from app.repositories.requests import RequestRepository
 from app.schemas.job import NewReviewIn
+from app.services import lead_fee
 
 
 class JobService:
@@ -142,44 +141,24 @@ class JobService:
     def _charge_lead_fee(
         self, provider: ProviderProfile, offer: Offer, job: Job, request: ServiceRequest
     ) -> int:
-        """Take the fee and write the row that explains it, together.
+        """The fee for this lead, unless it has already been paid.
 
-        The fee is frozen onto the offer by the caller: a later change to the
+        A tradesman who handed over his number in the chat has already been
+        charged for exactly this lead — `offer.lead_fee_centimes` is set the
+        moment that happens. Charging again at the handshake would bill him
+        twice for one client, which is the fastest way to teach him never to
+        answer a question in the chat again.
+
+        The fee is frozen onto the offer either way: a later change to the
         trade's price must never rewrite what this lead actually cost.
         """
-        credit = self.db.execute(
-            select(CreditAccount).where(CreditAccount.provider_id == provider.id)
-        ).scalar_one_or_none()
-        if credit is None:
-            # Every approved tradesman is given one at M1; a missing account is
-            # a bug, not a free lead.
-            credit = CreditAccount(provider_id=provider.id, balance_centimes=0, free_leads_left=0)
-            self.db.add(credit)
-            self.db.flush()
+        if offer.lead_fee_centimes is not None:
+            return offer.lead_fee_centimes
 
-        trade_fee = request.trade.lead_fee_centimes
-        fee = lead_fee_for(trade_fee, self.settings.get_int(SettingKey.DEFAULT_LEAD_FEE))
-
-        charge = charge_for_lead(
-            free_leads_left=credit.free_leads_left,
-            balance_centimes=credit.balance_centimes,
-            fee_centimes=fee,
+        taken = lead_fee.charge(
+            self.db, provider=provider, offer=offer, request=request, job_id=job.id
         )
-
-        credit.balance_centimes = charge.balance_after_centimes
-        credit.free_leads_left = charge.free_leads_after
-        self.db.add(
-            CreditTransaction(
-                account_id=credit.id,
-                type=charge.transaction_type,
-                amount_centimes=charge.amount_centimes,
-                balance_after_centimes=charge.balance_after_centimes,
-                reason=charge.reason,
-                offer_id=offer.id,
-                job_id=job.id,
-            )
-        )
-        return 0 if charge.amount_centimes == 0 else fee
+        return taken.fee_centimes
 
     # -- moving it along -------------------------------------------------
 
