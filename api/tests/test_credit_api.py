@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 
-from app.core.enums import Role
+from app.core.enums import Role, TransactionType
 from app.core.money import dirhams
 from app.core.policy import SettingKey
 from app.models.credit import CreditAccount, CreditTransaction
+from app.models.provider import ProviderProfile
 from app.models.system import AuditLog
 from app.repositories.catalog import SettingsRepository
 from tests.test_auth_api import auth, make_user, token_for
@@ -242,3 +245,87 @@ def test_a_tradesman_cannot_approve_his_own_transfer(client, api_prefix, stage):
 def test_the_queue_needs_an_admin(client, api_prefix, stage):
     assert queue(client, api_prefix, {"admin": stage["token"]}).status_code == 403
     assert client.get(f"{api_prefix}/admin/topups").status_code == 401
+
+
+# -- paid placement ---------------------------------------------------------
+
+
+def buy_boost(client, api_prefix, stage):
+    return client.post(f"{api_prefix}/pro/boost", headers=auth(stage["token"]))
+
+
+def credit_page(client, api_prefix, stage):
+    return client.get(f"{api_prefix}/pro/credit/page", headers=auth(stage["token"]))
+
+
+def fund(db, stage, amount):
+    account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
+    account.balance_centimes = amount
+    db.commit()
+
+
+def test_the_price_is_stated_before_he_can_buy(client, api_prefix, stage):
+    boost = credit_page(client, api_prefix, stage).json()["boost"]
+    assert boost["price_centimes"] == dirhams(20)
+    assert boost["days"] == 30
+    assert boost["active"] is False
+    assert boost["expires_at"] is None
+
+
+def test_the_screen_says_whether_he_can_afford_it(client, api_prefix, db, stage):
+    """A button he can press and be refused by is worse than one that is not
+    offered — he has to leave the screen either way, but only one of them
+    wastes the trip."""
+    assert credit_page(client, api_prefix, stage).json()["boost"]["affordable"] is False
+
+    fund(db, stage, dirhams(20))
+    assert credit_page(client, api_prefix, stage).json()["boost"]["affordable"] is True
+
+
+def test_buying_it_takes_the_money_and_writes_the_row(client, api_prefix, db, stage):
+    fund(db, stage, dirhams(50))
+    body = buy_boost(client, api_prefix, stage).json()
+
+    assert body["active"] is True
+    assert body["expires_at"] is not None
+
+    account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
+    assert account.balance_centimes == dirhams(30)
+
+    row = db.query(CreditTransaction).filter_by(account_id=account.id).one()
+    assert row.type is TransactionType.BOOST
+    assert row.amount_centimes == -dirhams(20)
+    assert row.reason == "boost_bought"
+    assert row.job_id is None
+
+
+def test_an_empty_balance_is_refused_rather_than_put_into_debt(
+    client, api_prefix, db, stage
+):
+    """The lead fee is allowed to go negative because two people are waiting
+    on it. Nobody at all is waiting on this one."""
+    response = buy_boost(client, api_prefix, stage)
+
+    assert response.status_code == 402
+    assert response.json()["code"] == "insufficient_credit"
+    assert db.query(CreditTransaction).count() == 0
+    assert db.get(ProviderProfile, stage["provider"].id).boosted_until is None
+
+
+def test_renewing_stacks_rather_than_restarts(client, api_prefix, db, stage):
+    fund(db, stage, dirhams(50))
+    first = buy_boost(client, api_prefix, stage).json()["expires_at"]
+    second = buy_boost(client, api_prefix, stage).json()["expires_at"]
+
+    assert datetime.fromisoformat(second) > datetime.fromisoformat(first)
+    account = db.query(CreditAccount).filter_by(provider_id=stage["provider"].id).one()
+    assert account.balance_centimes == dirhams(10)
+
+
+def test_a_client_cannot_buy_placement(client, api_prefix, db, stage):
+    """There is nothing for him to be placed above."""
+    make_user(db, phone="+212760009999", role=Role.CLIENT)
+    db.commit()
+    headers = auth(token_for(client, api_prefix, "0760009999"))
+
+    assert client.post(f"{api_prefix}/pro/boost", headers=headers).status_code == 403

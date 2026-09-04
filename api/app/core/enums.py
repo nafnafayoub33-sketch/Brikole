@@ -75,6 +75,10 @@ class TransactionType(StrEnum):
     REFUND = "refund"
     ADJUSTMENT = "adjustment"
     FREE_LEAD = "free_lead"
+    #: Thirty days of placement in the search results. Its own type, not an
+    #: adjustment: the ledger has to be able to answer "what did he spend on
+    #: leads and what on being seen" without reading the reason strings.
+    BOOST = "boost"
 
 
 class MessageKind(StrEnum):

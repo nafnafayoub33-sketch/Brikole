@@ -42,11 +42,22 @@ export function ProviderCard({ provider, language }: { provider: Provider; langu
           {trade && (
             <TradeIcon name={trade.icon} className="size-16 text-white/85" />
           )}
-          {/* Rare on purpose: a badge half the grid carries is decoration. */}
-          {provider.jobs_done >= 40 && provider.rating_count >= 15 && provider.rating_avg >= 4.7 && (
+          {/* Two badges that must never be confused. "Top rated" is earned
+              and cannot be bought; "sponsored" is bought and earns nothing.
+              Only one shows, and the paid one gives way — a client reading a
+              card should not have to work out which of the two it is. */}
+          {provider.jobs_done >= 40 &&
+          provider.rating_count >= 15 &&
+          provider.rating_avg >= 4.7 ? (
             <span className="absolute end-3 top-3 rounded-pill bg-white/90 px-2.5 py-1 text-[11px] font-bold text-navy-800">
               {t('provider.topRated')}
             </span>
+          ) : (
+            provider.is_boosted && (
+              <span className="absolute end-3 top-3 rounded-pill bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white/95">
+                {t('provider.sponsored')}
+              </span>
+            )
           )}
         </div>
 

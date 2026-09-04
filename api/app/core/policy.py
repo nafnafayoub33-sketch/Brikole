@@ -8,6 +8,7 @@ means a rule can be unit-tested without a database.
 
 from __future__ import annotations
 
+from app.core import boost as _boost
 from app.core import report as _report
 from app.core.money import dirhams
 
@@ -23,6 +24,7 @@ class SettingKey:
     AUTO_CONFIRM_DAYS = "auto_confirm_days"
     DISPUTE_WINDOW_DAYS = "dispute_window_days"
     CONTACT_FLAG_THRESHOLD = "contact_flag_threshold"
+    BOOST_MONTHLY = "boost_monthly_centimes"
     DEFAULT_RADIUS_KM = "default_radius_km"
     BANK_TRANSFER = "bank_transfer"
     MAINTENANCE_MODE = "maintenance_mode"
@@ -41,6 +43,10 @@ DEFAULT_LEAD_FEE_CENTIMES = dirhams(5)
 #: to find out whether the platform brings him anything, and no more: a longer
 #: run costs the platform real money on somebody who may never come back.
 FREE_LEADS_NEW_PROVIDER = 5
+
+#: Thirty days of placement in search. Optional, and it buys placement only —
+#: see `core/boost.py` for what it may not buy.
+BOOST_MONTHLY_CENTIMES = _boost.BOOST_MONTHLY_CENTIMES
 
 #: Different clients a tradesman may try to hand his number to before staff
 #: hear about it. Lives in `core/report.py` with the rule that reads it.
@@ -76,6 +82,7 @@ DEFAULTS: dict[str, object] = {
     SettingKey.AUTO_CONFIRM_DAYS: AUTO_CONFIRM_DAYS,
     SettingKey.DISPUTE_WINDOW_DAYS: DISPUTE_WINDOW_DAYS,
     SettingKey.CONTACT_FLAG_THRESHOLD: CONTACT_FLAG_THRESHOLD,
+    SettingKey.BOOST_MONTHLY: BOOST_MONTHLY_CENTIMES,
     SettingKey.DEFAULT_RADIUS_KM: DEFAULT_RADIUS_KM,
     SettingKey.MAINTENANCE_MODE: False,
     SettingKey.BANK_TRANSFER: {

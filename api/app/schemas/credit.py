@@ -54,6 +54,21 @@ class NewTopupIn(BaseModel):
     receipt_path: str | None = None
 
 
+class BoostOut(ApiModel):
+    """Paid placement, as M9 shows it.
+
+    `active` is answered by the API rather than derived on the screen from
+    `expires_at`: the clock that decides it is the one the ordering uses, and
+    a phone with the wrong time should not disagree with the search results.
+    """
+
+    active: bool
+    expires_at: datetime | None
+    price_centimes: int
+    days: int
+    affordable: bool
+
+
 class CreditPageOut(ApiModel):
     """Everything M9 renders, in one request."""
 
@@ -61,6 +76,7 @@ class CreditPageOut(ApiModel):
     free_leads_left: int
     default_lead_fee_centimes: int
     can_take_work: bool
+    boost: BoostOut
 
     bank: BankDetailsOut
     preset_amounts: list[int]

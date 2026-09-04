@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -77,20 +77,36 @@ class ProviderRepository:
             selectinload(ProviderProfile.trades),
         )
 
+        # Paid placement comes first, inside whatever the client asked to sort
+        # by — it moves a tradesman up the list and does nothing else. It is
+        # never a filter, so the man who did not pay is still on the page, and
+        # it never touches a rating: what a client is told about somebody is
+        # not for sale. The card carries a badge saying the position was paid
+        # for, because placement a reader cannot see the reason for is a lie
+        # by omission.
+        #
         # `id` breaks every tie, so page 2 never repeats a row from page 1.
+        boosted_first = self._boosted().desc()
+
         if sort is ProviderSort.JOBS:
-            stmt = stmt.order_by(ProviderProfile.jobs_done.desc(), ProviderProfile.id.asc())
+            stmt = stmt.order_by(
+                boosted_first, ProviderProfile.jobs_done.desc(), ProviderProfile.id.asc()
+            )
         elif sort is ProviderSort.NEWEST:
-            stmt = stmt.order_by(ProviderProfile.created_at.desc(), ProviderProfile.id.asc())
+            stmt = stmt.order_by(
+                boosted_first, ProviderProfile.created_at.desc(), ProviderProfile.id.asc()
+            )
         elif sort is ProviderSort.PRICE:
             # Nulls last: "I would rather quote" must not sort as "free".
             stmt = stmt.order_by(
+                boosted_first,
                 ProviderProfile.starting_price_centimes.is_(None),
                 ProviderProfile.starting_price_centimes.asc(),
                 ProviderProfile.id.asc(),
             )
         else:
             stmt = stmt.order_by(
+                boosted_first,
                 ProviderProfile.rating_avg.desc(),
                 ProviderProfile.rating_count.desc(),
                 ProviderProfile.id.asc(),
@@ -102,6 +118,30 @@ class ProviderRepository:
             .unique()
         )
         return rows, total
+
+    @staticmethod
+    def _boosted() -> ColumnElement[bool]:
+        """Whether his placement is paid for *right now*.
+
+        Compared against the clock rather than kept as a flag: a boost that has
+        run out needs nothing swept, and there is no job to forget to run.
+
+        Two details that both bite silently.
+
+        **The null check is not redundant.** `NULL > x` is NULL, and MySQL
+        sorts NULL last under `DESC` — so a tradesman whose boost *lapsed*
+        (false) would outrank one who never bought one (null). Written this
+        way the expression is only ever true or false.
+
+        **`UTC_TIMESTAMP()`, never `NOW()`.** These columns are naive UTC by
+        contract; `NOW()` is the database server's wall clock, and on a machine
+        set to Casablanca time it would call a boost active for an hour after
+        it expired — and only there, which is the worst kind of bug to find.
+        """
+        return and_(
+            ProviderProfile.boosted_until.is_not(None),
+            ProviderProfile.boosted_until > func.utc_timestamp(),
+        )
 
     @staticmethod
     def _matches(query: str) -> ColumnElement[bool]:

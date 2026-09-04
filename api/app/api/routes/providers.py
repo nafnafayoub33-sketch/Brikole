@@ -6,8 +6,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
+from app.core import boost as boost_rules
 from app.core.errors import DomainError, ErrorCode
 from app.deps import DbSession
+from app.models.base import utcnow
 from app.models.provider import ProviderProfile
 from app.repositories.providers import ProviderRepository, ProviderSort
 from app.repositories.reviews import ReviewRepository, ReviewRow
@@ -128,4 +130,5 @@ def to_card(profile: ProviderProfile) -> ProviderCardOut:
         jobs_done=profile.jobs_done,
         years_experience=profile.years_experience,
         starting_price_centimes=profile.starting_price_centimes,
+        is_boosted=boost_rules.is_active(profile.boosted_until, utcnow()),
     )

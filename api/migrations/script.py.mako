@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+
 # Autogenerate reaches for `mysql.DATETIME()` and friends when it writes a
 # downgrade and never imports them, so a generated file would be born broken.
 from sqlalchemy.dialects import mysql

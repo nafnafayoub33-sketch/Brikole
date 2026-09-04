@@ -94,6 +94,9 @@ export interface Provider {
   years_experience: number
   /** Null when he would rather quote per job — the card omits it. */
   starting_price_centimes: number | null
+  /** He paid for this position. The card says so — placement a reader cannot
+   *  see the reason for is a lie by omission. */
+  is_boosted: boolean
 }
 
 export interface ProviderPhoto {

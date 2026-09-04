@@ -42,6 +42,11 @@ class ProviderCardOut(ApiModel):
     #: inventing a number.
     starting_price_centimes: int | None
 
+    #: He paid for this position. Sent so the card can say so — placement a
+    #: reader cannot see the reason for is a lie by omission, and it costs the
+    #: platform nothing to be straight about it.
+    is_boosted: bool = False
+
 
 class ProviderPhotoOut(ApiModel):
     id: int

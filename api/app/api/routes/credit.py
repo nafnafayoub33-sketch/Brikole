@@ -6,13 +6,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
 
+from app.core import boost as boost_rules
 from app.core.enums import Role
 from app.core.topup import PRESET_AMOUNTS
 from app.deps import CurrentUser, DbSession, require_roles
+from app.models.base import utcnow
 from app.models.credit import CreditAccount, TopupRequest
 from app.models.provider import ProviderProfile
 from app.schemas.common import Page
 from app.schemas.credit import (
+    BoostOut,
     CreditPageOut,
     LedgerEntryOut,
     NewTopupIn,
@@ -41,10 +44,37 @@ def credit_page(user: CurrentUser, db: DbSession) -> CreditPageOut:
         free_leads_left=account.free_leads_left,
         default_lead_fee_centimes=service.offers.default_fee(),
         can_take_work=service.offers.can_take_work(profile),
+        boost=_boost(service, profile, account.balance_centimes),
         bank=service.bank_details(),
         preset_amounts=list(PRESET_AMOUNTS),
         topups=[_topup(topup) for topup in topups],
         ledger=[LedgerEntryOut.model_validate(row) for row in ledger],
+    )
+
+
+@router.post(
+    "/pro/boost",
+    response_model=BoostOut,
+    dependencies=[Depends(require_roles(Role.PROVIDER))],
+)
+def buy_boost(user: CurrentUser, db: DbSession) -> BoostOut:
+    """Buy thirty days of placement. Answers 402 when the balance is short —
+    nobody is waiting on this one, so he is told to top up rather than put
+    into debt for something he chose."""
+    service = CreditService(db)
+    profile = service.buy_boost(user)
+    account = service.repo.account_for(profile.id)
+    return _boost(service, profile, account.balance_centimes if account else 0)
+
+
+def _boost(service: CreditService, profile: ProviderProfile, balance: int) -> BoostOut:
+    price = service.boost_price()
+    return BoostOut(
+        active=boost_rules.is_active(profile.boosted_until, utcnow()),
+        expires_at=profile.boosted_until,
+        price_centimes=price,
+        days=boost_rules.BOOST_DAYS,
+        affordable=balance >= price,
     )
 
 

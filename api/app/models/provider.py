@@ -84,6 +84,11 @@ class ProviderProfile(PkMixin, TimestampMixin, Base):
     jobs_done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     jobs_cancelled: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    #: Paid placement runs until this moment and then simply stops — nothing
+    #: sweeps it, because a boost that has run out is a comparison against the
+    #: clock and not a state anybody has to remember to clear.
+    boosted_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_by_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True

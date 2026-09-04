@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.core import boost as boost_rules
 from app.core.enums import Role, TopupStatus, TransactionType
 from app.core.errors import DomainError, ErrorCode
 from app.core.policy import SettingKey
@@ -61,6 +62,54 @@ class CreditService:
             self.repo.topups_for(profile.id),
             self.repo.ledger(account.id),
         )
+
+    # -- paid placement --------------------------------------------------
+
+    def boost_price(self) -> int:
+        return self.settings.get_int(SettingKey.BOOST_MONTHLY)
+
+    def buy_boost(self, user: User) -> ProviderProfile:
+        """Thirty days at the top of the list, taken from his balance.
+
+        **This one refuses when he is short**, where the lead fee does not. The
+        difference is who is waiting: a lead fee lands on a handshake two people
+        have already made, and refusing there breaks the only flow that earns
+        the platform anything. Nobody at all is waiting on a boost, so he is
+        told to top up rather than put into debt for something he chose.
+        """
+        profile = self.offers.profile_for(user)
+        account = self.offers.credit(profile)
+        price = self.boost_price()
+
+        try:
+            bought = boost_rules.buy(
+                boosted_until=profile.boosted_until,
+                balance_centimes=account.balance_centimes,
+                price_centimes=price,
+                now=utcnow(),
+            )
+        except boost_rules.BoostRefused as error:
+            raise DomainError(
+                ErrorCode.INSUFFICIENT_CREDIT,
+                needed_centimes=price,
+                balance_centimes=account.balance_centimes,
+            ) from error
+
+        account.balance_centimes = bought.balance_after_centimes
+        self.db.add(
+            CreditTransaction(
+                account_id=account.id,
+                type=TransactionType.BOOST,
+                amount_centimes=-bought.price_centimes,
+                balance_after_centimes=bought.balance_after_centimes,
+                reason="boost_bought",
+            )
+        )
+        profile.boosted_until = bought.expires_at
+
+        self.db.commit()
+        self.db.refresh(profile)
+        return profile
 
     def submit_topup(self, user: User, payload: NewTopupIn) -> TopupRequest:
         """Record the claim. **This moves no money.**"""

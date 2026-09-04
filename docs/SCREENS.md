@@ -59,6 +59,15 @@ Trades & cities · Settings · Audit log.
   rating, jobs done and the starting price — the same card the home page uses.
   A permanent *Describe your job* card sits in the grid.
 - **Sorting:** best rated (default) · most jobs · cheapest to start · newest
+- **Paid placement comes first, inside whichever sort was chosen.** It is a
+  position and nothing else: never a filter, so nobody is pushed off the page,
+  and never a rating, because what a client is told about somebody is not for
+  sale. Compared against the clock, so a boost that lapsed just stops.
+- **A sponsored card says it is sponsored.** Placement a reader cannot see the
+  reason for is a lie by omission, and saying so costs the platform nothing.
+  Only one badge shows and the paid one gives way to *Top rated*: one of those
+  is earned and cannot be bought, and a client should never have to work out
+  which he is looking at.
 - **The whole state is in the URL** — term, trade, sort, page — and changing any
   of them resets the page, because page 4 of a different search is not somewhere
   anybody meant to be.
@@ -317,12 +326,29 @@ with wet or dirty hands. Minimum touch target 52px.
   the reference and a photo of the receipt. **The balance does not move until an
   admin approves it,** and the screen says so.
 - **States:** loading · empty ledger · a pending top-up (shown at the top with its
-  submitted date) · rejected top-up with the admin's reason
+  submitted date) · rejected top-up with the admin's reason · placement active
+  with its expiry · placement affordable · placement out of reach
 - **One pending claim at a time.** A second is almost always him thinking the
   first did not go through, and it is two rows an admin has to reconcile against
   one bank statement.
 - **Every amount is shown as the jobs it buys.** "500 DH" means nothing to a
   tradesman deciding how much to transfer; "50 jobs" means everything.
+- **Paid placement lives here too**, under the balance, because it spends the
+  same money. 20 DH buys 30 days at the top of the search results.
+  - **It says what it does not buy**, in the card: the rating does not move
+    and no competitor is hidden. A tradesman who thinks 20 DH bought him a
+    better rating finds out otherwise from a client, and by then the platform
+    has sold something it does not have.
+  - **It confirms first** — the only control on this screen that spends money
+    the moment it is pressed.
+  - **Short balance offers nothing to press.** A button he can press and be
+    refused by is worse than one that is not there: he leaves the screen
+    either way, and only one of them wastes the trip.
+  - **Renewing stacks.** Buying again on day 25 of a month he already paid
+    for adds thirty days to the end of it. Restarting from today would quietly
+    take five days off him, and he would find out by counting.
+  - **A month is thirty days**, always. Calendar months would make February
+    cheaper than March for no reason he could be told.
 - **The reference is mandatory** — it is what an admin types into a statement
   search, and without it A5 is a list of claims nobody can check.
 - The receipt goes to the private bucket, like the CIN: it has an account number

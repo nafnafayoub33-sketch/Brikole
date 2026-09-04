@@ -7,11 +7,15 @@ the moment their status changes rather than at the next deploy.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
+import pytest
 from sqlalchemy.orm import Session
 
 from app.core.enums import ProviderStatus, Role, UserStatus
 from app.core.money import dirhams
 from app.core.security import hash_password
+from app.models.base import utcnow
 from app.models.catalog import City, Trade
 from app.models.provider import ProviderProfile
 from app.models.user import User
@@ -32,6 +36,7 @@ def make_provider(
     jobs_done: int = 0,
     price_dh: int | None = None,
     headline: str | None = None,
+    boosted_until: datetime | None = None,
 ) -> ProviderProfile:
     user = User(
         phone=phone,
@@ -52,6 +57,7 @@ def make_provider(
         jobs_done=jobs_done,
         headline=headline,
         starting_price_centimes=None if price_dh is None else dirhams(price_dh),
+        boosted_until=boosted_until,
     )
     profile.trades = trades
     db.add(profile)
@@ -347,3 +353,83 @@ def test_an_empty_search_is_not_a_filter(client, api_prefix, db):
     db.commit()
 
     assert client.get(f"{api_prefix}/providers", params={"q": "   "}).json()["total"] == 1
+
+
+# -- paid placement ---------------------------------------------------------
+
+
+def boosted_grid(db, sort=None):
+    """Two tradesmen the sort would separate, and the worse one has paid."""
+    casa = make_city(db, "casablanca")
+    plumber = make_trade(db, "plombier")
+    make_provider(
+        db,
+        phone="+212700000001",
+        city=casa,
+        trades=[plumber],
+        name="Better Unpaid",
+        rating=5.0,
+        rating_count=40,
+        jobs_done=90,
+        price_dh=100,
+    )
+    make_provider(
+        db,
+        phone="+212700000002",
+        city=casa,
+        trades=[plumber],
+        name="Worse Paid",
+        rating=3.0,
+        rating_count=2,
+        jobs_done=1,
+        price_dh=900,
+        boosted_until=utcnow() + timedelta(days=10),
+    )
+    db.commit()
+    return {"city": casa, "trade": plumber}
+
+
+@pytest.mark.parametrize("sort", ["rating", "jobs", "price", "newest"])
+def test_a_paid_position_wins_inside_every_sort(client, api_prefix, db, sort):
+    """It is a position, not a filter and not a separate shelf: whatever the
+    client asked to sort by still decides everything below the paid rows."""
+    boosted_grid(db)
+    payload = client.get(f"{api_prefix}/providers", params={"sort": sort}).json()
+
+    assert names(payload) == ["Worse Paid", "Better Unpaid"]
+
+
+def test_the_card_says_the_position_was_paid_for(client, api_prefix, db):
+    """Placement a reader cannot see the reason for is a lie by omission."""
+    boosted_grid(db)
+    items = client.get(f"{api_prefix}/providers").json()["items"]
+
+    assert [item["is_boosted"] for item in items] == [True, False]
+
+
+def test_nobody_is_pushed_off_the_list_by_somebody_paying(client, api_prefix, db):
+    """Being listed is free. The boost moves a man up and does nothing else."""
+    boosted_grid(db)
+    payload = client.get(f"{api_prefix}/providers").json()
+
+    assert payload["total"] == 2
+
+
+def test_an_expired_boost_stops_counting_on_its_own(client, api_prefix, db):
+    """Compared against the clock, so there is nothing to sweep and no job to
+    forget to run."""
+    casa = make_city(db, "casablanca")
+    plumber = make_trade(db, "plombier")
+    make_provider(
+        db, phone="+212700000001", city=casa, trades=[plumber], name="Lapsed",
+        rating=1.0, rating_count=1, boosted_until=utcnow() - timedelta(minutes=1),
+    )
+    make_provider(
+        db, phone="+212700000002", city=casa, trades=[plumber], name="Ordinary",
+        rating=5.0, rating_count=9,
+    )
+    db.commit()
+
+    payload = client.get(f"{api_prefix}/providers").json()
+    assert names(payload) == ["Ordinary", "Lapsed"]
+    assert payload["items"][1]["is_boosted"] is False

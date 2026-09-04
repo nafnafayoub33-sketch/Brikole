@@ -7,7 +7,13 @@ import { CREDIT_KEY, FEED_KEY } from '@/data/offers'
 import type { Page } from '@/data/types'
 
 export type TopupStatus = 'pending' | 'approved' | 'rejected'
-export type TransactionType = 'lead_fee' | 'topup' | 'refund' | 'adjustment' | 'free_lead'
+export type TransactionType =
+  | 'lead_fee'
+  | 'topup'
+  | 'refund'
+  | 'adjustment'
+  | 'free_lead'
+  | 'boost'
 
 export interface BankDetails {
   bank_name: string
@@ -39,11 +45,25 @@ export interface Topup {
   receipt_path: string | null
 }
 
+export interface Boost {
+  /** Answered by the API, not derived here from `expires_at`: the clock that
+   *  decides it is the one the search ordering uses, and a phone with the
+   *  wrong time must not disagree with the results. */
+  active: boolean
+  expires_at: string | null
+  price_centimes: number
+  days: number
+  /** Whether the balance covers it. A button he can press and be refused by is
+   *  worse than one that is not offered. */
+  affordable: boolean
+}
+
 export interface CreditPage {
   balance_centimes: number
   free_leads_left: number
   default_lead_fee_centimes: number
   can_take_work: boolean
+  boost: Boost
   bank: BankDetails
   preset_amounts: number[]
   topups: Topup[]
@@ -76,6 +96,18 @@ export function useSubmitTopup() {
     mutationFn: (body: { amount_centimes: number; reference: string; receipt_path: string | null }) =>
       api<Topup>('/pro/topups', { method: 'POST', body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CREDIT_PAGE_KEY }),
+  })
+}
+
+/** Buying placement moves his balance and reorders every listing he is in. */
+export function useBuyBoost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<Boost>('/pro/boost', { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CREDIT_PAGE_KEY })
+      void queryClient.invalidateQueries({ queryKey: CREDIT_KEY })
+    },
   })
 }
 

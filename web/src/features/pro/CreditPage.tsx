@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+  useBuyBoost,
   useCreditPage,
   useSubmitTopup,
+  type Boost,
   type LedgerEntry,
   type Topup,
   type TransactionType,
@@ -14,6 +16,7 @@ import { Alert } from '@/ui/Alert'
 import { Badge } from '@/ui/Badge'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
+import { ConfirmButton } from '@/ui/ConfirmButton'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { Field } from '@/ui/Field'
@@ -34,6 +37,7 @@ export function CreditPage() {
   const language = i18n.language as Language
   const page = useCreditPage()
   const submit = useSubmitTopup()
+  const boost = useBuyBoost()
 
   const [amount, setAmount] = useState('')
   const [reference, setReference] = useState('')
@@ -92,6 +96,13 @@ export function CreditPage() {
           </Badge>
         )}
       </Card>
+
+      <BoostCard
+        boost={data.boost}
+        language={language}
+        loading={boost.isPending}
+        onBuy={() => boost.mutate()}
+      />
 
       {pending && (
         <Alert tone="info" className="mt-6">
@@ -276,6 +287,70 @@ export function CreditPage() {
   )
 }
 
+/**
+ * Paid placement — the only thing on this screen that spends money the moment
+ * he presses it, which is why it is the only one that asks twice.
+ *
+ * It says what it buys *and* what it does not. A tradesman who thinks 20 DH
+ * bought him a better rating finds out otherwise from a client, and by then
+ * the platform has sold something it does not have.
+ */
+function BoostCard({
+  boost,
+  language,
+  loading,
+  onBuy,
+}: {
+  boost: Boost
+  language: Language
+  loading: boolean
+  onBuy: () => void
+}) {
+  const { t } = useTranslation()
+  const price = formatDirhams(boost.price_centimes, language)
+
+  return (
+    <Card className="mt-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-fg">{t('boost.title')}</h2>
+          <p className="mt-1 text-sm text-fg-muted">
+            {t('boost.what', { days: boost.days })}
+          </p>
+        </div>
+        {boost.active && <Badge tone="success">{t('boost.active')}</Badge>}
+      </div>
+
+      {boost.active && boost.expires_at && (
+        <p className="mt-3 text-sm text-fg-muted">
+          {t('boost.until')}:{' '}
+          <span className="numeric font-semibold text-fg">
+            {formatDate(boost.expires_at, language)}
+          </span>
+        </p>
+      )}
+
+      {/* Said plainly, because the alternative is a tradesman inferring it. */}
+      <p className="mt-3 text-sm text-fg-subtle">{t('boost.notForSale')}</p>
+
+      <div className="mt-4">
+        {boost.affordable ? (
+          <ConfirmButton
+            key={boost.active ? 'renew' : 'buy'}
+            label={boost.active ? t('boost.renew') : t('boost.buy')}
+            question={t('boost.confirm', { price })}
+            confirmLabel={t('boost.confirmYes')}
+            onConfirm={onBuy}
+            loading={loading}
+          />
+        ) : (
+          <Alert tone="warning">{t('boost.tooPoor', { price })}</Alert>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 function BankRow({
   label,
   value,
@@ -301,6 +376,7 @@ const TYPE_KEYS: Record<TransactionType, string> = {
   free_lead: 'credit.typeFreeLead',
   refund: 'credit.typeRefund',
   adjustment: 'credit.typeAdjustment',
+  boost: 'credit.typeBoost',
 }
 
 function LedgerRow({ entry, language }: { entry: LedgerEntry; language: Language }) {
