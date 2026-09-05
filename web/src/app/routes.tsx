@@ -15,6 +15,7 @@ import { FinancePage } from '@/features/admin/FinancePage'
 import { CatalogPage } from '@/features/admin/CatalogPage'
 import { RequestsPage as AdminRequestsPage } from '@/features/admin/RequestsPage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
+import { StaffPage } from '@/features/admin/StaffPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { ChatPage as ClientChatPage } from '@/features/client/ChatPage'
 import { DisputePage as ClientDisputePage } from '@/features/client/DisputePage'
@@ -149,7 +150,7 @@ export function AppRoutes() {
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="audit" element={<AuditPage />} />
-        <Route path="staff" element={<NotBuilt screen="A9" />} />
+        <Route path="staff" element={<StaffPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

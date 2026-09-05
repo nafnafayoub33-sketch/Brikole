@@ -139,6 +139,25 @@ class UserRepository:
         )
         return rows, total
 
+    def staff(self) -> list[User]:
+        """Every moderator and admin, including suspended ones.
+
+        A9 is where a suspension is undone, so it is the one list that cannot
+        filter them out. Deleted accounts stay out: they are gone, not off.
+        """
+        return list(
+            self.db.execute(
+                select(User)
+                .where(
+                    User.role.in_([Role.MODERATOR, Role.ADMIN]),
+                    User.status != UserStatus.DELETED,
+                )
+                .order_by(User.role, User.full_name, User.id)
+            )
+            .scalars()
+            .all()
+        )
+
     def count_other_active_admins(self, user_id: int) -> int:
         """How many admins would still be able to sign in without this one."""
         return int(

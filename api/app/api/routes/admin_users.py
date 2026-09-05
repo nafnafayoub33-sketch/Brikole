@@ -8,12 +8,14 @@ everything that changes an account writes an audit row.
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 
 from app.core.enums import Role, UserStatus
+from app.core.staff_work import Work, WorkKind
 from app.deps import CurrentUser, DbSession, require_roles
 from app.models.credit import CreditAccount
 from app.models.dispute import Dispute
@@ -23,6 +25,9 @@ from app.schemas.common import Page
 from app.schemas.staff import (
     NewStaffIn,
     RoleIn,
+    StaffMemberOut,
+    StaffRosterOut,
+    StaffWorkOut,
     SuspendIn,
     UserActivityOut,
     UserDetailOut,
@@ -53,6 +58,45 @@ def list_users(
     )
     return Page[UserRowOut](
         items=[_row(user) for user in rows], total=total, page=page, per_page=per_page
+    )
+
+
+@router.get("/staff", response_model=StaffRosterOut)
+def staff_roster(actor: CurrentUser, db: DbSession) -> StaffRosterOut:
+    """A9. Declared before `/{user_id}` on purpose — FastAPI matches in order,
+    and `staff` would otherwise be read as a user id and answer 422."""
+    return StaffRosterOut(
+        members=[
+            _member(person, work, last, viewer=actor)
+            for person, work, last in StaffService(db).roster()
+        ]
+    )
+
+
+def _member(
+    person: User, work: Work, last_action_at: datetime | None, *, viewer: User
+) -> StaffMemberOut:
+    return StaffMemberOut(
+        id=person.id,
+        full_name=person.full_name,
+        phone=person.phone,
+        role=person.role,
+        status=person.status,
+        created_at=person.created_at,
+        suspended_until=person.suspended_until,
+        suspension_reason=person.suspension_reason,
+        last_login_at=person.last_login_at,
+        last_action_at=last_action_at,
+        work=StaffWorkOut(
+            total=work.total,
+            approvals=work.by_kind[WorkKind.APPROVALS],
+            disputes=work.by_kind[WorkKind.DISPUTES],
+            reports=work.by_kind[WorkKind.REPORTS],
+            money=work.by_kind[WorkKind.MONEY],
+            accounts=work.by_kind[WorkKind.ACCOUNTS],
+            platform=work.by_kind[WorkKind.PLATFORM],
+        ),
+        is_me=person.id == viewer.id,
     )
 
 

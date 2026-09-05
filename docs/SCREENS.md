@@ -732,7 +732,36 @@ screen behind two tabs.
   blobs, on the one screen whose whole job is being readable.
 
 ### A9 · Staff — `/admin/staff`
-- Moderators and admins, what they have handled, and deactivation.
+Moderators and admins, what each of them has handled, and deactivation. A3
+lists every account; this lists the people who can change them.
+
+- **The work is counted out of `audit_log`**, not out of a column somebody has
+  to remember to increment. Every staff action already writes a row there, so
+  the counts are right by construction — a staff action that is not logged is a
+  bug the product already has.
+- **Six kinds of work, not fifteen action strings:** approvals (A2), disputes
+  (D1), reports (D3), money (A5), accounts (A3/A9), platform (A4/A6/A7). The
+  grouping is a product decision and lives in `core/staff_work.py`.
+- **Every kind is shown even at zero.** A moderator who has never touched a
+  dispute is a fact worth seeing, and a screen deciding whether to render a row
+  has a hole in it. The total sits apart from the six on purpose: a total that
+  does not match them is an action nobody has classified yet.
+- **Last action and last sign-in are different columns.** Signing in and doing
+  nothing is exactly the case worth telling apart, and `last_login_at` cannot
+  answer it.
+- **A suspended member is still on this list** — it is the screen that undoes a
+  suspension, so it is the one list that cannot filter them out.
+- **An admin is offered no buttons on his own row**, with the reason in words:
+  suspending yourself locks you out of the screen that would undo it. Refused
+  before it is pressed rather than after.
+- **A reason is mandatory**, and a permanent suspension is what "has left the
+  company" means here. Both reuse A3's rules — there is one set of them.
+- **Adding a moderator lives here, not on A3.** It sat there because that is
+  where the accounts were, but "add somebody who can suspend accounts" is a
+  staff decision; A3 links across instead of carrying a second copy of the form.
+- **States:** loading · error with retry · the roster · adding · deactivating
+  (length, reason, confirm) · the reader's own row
+- → A3, A8
 
 ---
 

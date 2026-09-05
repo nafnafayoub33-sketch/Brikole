@@ -1,5 +1,9 @@
 """The record of what staff did to whom.
 
+`AuditAction` is re-exported here so every existing call site keeps working;
+it lives in `core` because A9 groups the actions into kinds of work, and a
+rule in `core` must not have to reach into a service to know what they are.
+
 `CLAUDE.md` puts it plainly: every admin or moderator action that changes
 another user's state writes a row here, no exceptions. So the write lives next
 to the change rather than being remembered at each call site — a helper that is
@@ -12,28 +16,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.audit_actions import AuditAction
 from app.models.base import utcnow
 from app.models.system import AuditLog
 from app.models.user import User
 
-
-class AuditAction:
-    PROVIDER_APPROVED = "provider.approved"
-    PROVIDER_REJECTED = "provider.rejected"
-    TOPUP_APPROVED = "topup.approved"
-    TOPUP_REJECTED = "topup.rejected"
-    DISPUTE_RESOLVED = "dispute.resolved"
-    SETTING_CHANGED = "setting.changed"
-    REPORT_HANDLED = "report.handled"
-    USER_SUSPENDED = "user.suspended"
-    USER_REACTIVATED = "user.reactivated"
-    USER_ROLE_CHANGED = "user.role_changed"
-    STAFF_CREATED = "staff.created"
-    REQUEST_CANCELLED = "request.cancelled"
-    TRADE_CREATED = "trade.created"
-    TRADE_UPDATED = "trade.updated"
-    CITY_CREATED = "city.created"
-    CITY_UPDATED = "city.updated"
+__all__ = ["AuditAction", "record"]
 
 
 def record(

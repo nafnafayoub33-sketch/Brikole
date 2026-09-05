@@ -247,6 +247,45 @@ export function useUsers(filters: UserFilters, page: number) {
   })
 }
 
+export interface StaffWork {
+  total: number
+  approvals: number
+  disputes: number
+  reports: number
+  money: number
+  accounts: number
+  platform: number
+}
+
+export interface StaffMember {
+  id: number
+  full_name: string
+  phone: string
+  role: Role
+  status: UserStatus
+  created_at: string
+  suspended_until: string | null
+  suspension_reason: string | null
+  last_login_at: string | null
+  /** When he last *did* something. `last_login_at` does not answer that:
+   *  signing in and doing nothing is the case worth telling apart. */
+  last_action_at: string | null
+  work: StaffWork
+  /** The reader's own row. Refused before it is pressed rather than after —
+   *  suspending yourself locks you out of the screen that would undo it. */
+  is_me: boolean
+}
+
+export const STAFF_KEY = [...USERS_KEY, 'staff'] as const
+
+export function useStaff() {
+  return useQuery({
+    queryKey: STAFF_KEY,
+    queryFn: () => api<{ members: StaffMember[] }>('/admin/users/staff'),
+    staleTime: 15_000,
+  })
+}
+
 export function useUser(userId: number | null) {
   return useQuery({
     queryKey: [...USERS_KEY, 'one', userId],

@@ -1,4 +1,4 @@
-"""A3 — accounts, as an admin sees and changes them."""
+"""A3 and A9 — accounts and staff, as an admin sees and changes them."""
 
 from __future__ import annotations
 
@@ -10,6 +10,49 @@ from app.core.enums import DisputeStatus, ProviderStatus, Role, UserStatus
 from app.core.staff import MAX_SUSPENSION_DAYS, REASON_MAX
 from app.schemas.catalog import CityOut
 from app.schemas.common import ApiModel
+
+
+class StaffWorkOut(ApiModel):
+    """What one staff member has handled, grouped into the six kinds of work
+    the platform actually has. Every kind is present even at zero — a
+    moderator who has never touched a dispute is a fact worth seeing."""
+
+    total: int
+    approvals: int
+    disputes: int
+    reports: int
+    money: int
+    accounts: int
+    platform: int
+
+
+class StaffMemberOut(ApiModel):
+    """A9's row."""
+
+    id: int
+    full_name: str
+    phone: str
+    role: Role
+    status: UserStatus
+    created_at: datetime
+
+    suspended_until: datetime | None
+    suspension_reason: str | None
+    last_login_at: datetime | None
+    #: When he last *did* something, which `last_login_at` does not answer:
+    #: signing in and doing nothing is the case worth telling apart.
+    last_action_at: datetime | None
+
+    work: StaffWorkOut
+
+    #: Refused before it is pressed rather than after. He cannot act on his
+    #: own account — suspending yourself locks you out of the screen that
+    #: would undo it.
+    is_me: bool
+
+
+class StaffRosterOut(ApiModel):
+    members: list[StaffMemberOut]
 
 
 class UserRowOut(ApiModel):

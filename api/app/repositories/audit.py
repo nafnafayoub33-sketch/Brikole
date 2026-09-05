@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -44,6 +46,39 @@ class AuditRepository:
         ).all()
 
         return [(entry, actor) for entry, actor in rows], total
+
+    def work_by_actor(self) -> dict[int, dict[str, int]]:
+        """Every staff action ever taken, counted per person and per action.
+
+        One grouped query for the whole roster rather than one per row: A9 is
+        a short list, but the log behind it is not, and a query per staff
+        member is a screen that gets slower every month it runs.
+        """
+        rows = self.db.execute(
+            select(AuditLog.actor_id, AuditLog.action, func.count())
+            .where(AuditLog.actor_id.is_not(None))
+            .group_by(AuditLog.actor_id, AuditLog.action)
+        ).all()
+
+        counts: dict[int, dict[str, int]] = {}
+        for actor_id, action, count in rows:
+            if actor_id is not None:
+                counts.setdefault(actor_id, {})[action] = count
+        return counts
+
+    def last_action_at(self) -> dict[int, datetime]:
+        """When each person last did anything.
+
+        The one number that answers "is this moderator still working here",
+        which `last_login_at` does not: signing in and doing nothing is the
+        case worth telling apart.
+        """
+        rows = self.db.execute(
+            select(AuditLog.actor_id, func.max(AuditLog.created_at))
+            .where(AuditLog.actor_id.is_not(None))
+            .group_by(AuditLog.actor_id)
+        ).all()
+        return {actor_id: when for actor_id, when in rows if actor_id is not None}
 
     def distinct_actions(self) -> list[str]:
         return [

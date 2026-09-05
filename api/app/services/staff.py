@@ -11,6 +11,8 @@ database. This layer's job is to fetch, to ask, and to record.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.core import staff as rules
@@ -19,9 +21,11 @@ from app.core.errors import DomainError, ErrorCode
 from app.core.permissions import Permission, has_permission
 from app.core.phone import normalise_phone
 from app.core.security import hash_password, validate_password
+from app.core.staff_work import Work, summarise
 from app.models.base import utcnow
 from app.models.dispute import Dispute
 from app.models.user import User
+from app.repositories.audit import AuditRepository
 from app.repositories.users import UserActivity, UserRepository
 from app.services import audit
 from app.services.audit import AuditAction
@@ -55,6 +59,22 @@ class StaffService:
 
     def activity(self, user: User) -> UserActivity:
         return self.users.activity(user)
+
+    def roster(self) -> list[tuple[User, Work, datetime | None]]:
+        """A9 — every moderator and admin, with what each of them has handled.
+
+        The counts come out of the audit log rather than a column somebody has
+        to remember to increment, so they are right by construction: a staff
+        action that is not logged is a bug the whole product already has.
+        """
+        audit_log = AuditRepository(self.db)
+        counts = audit_log.work_by_actor()
+        last = audit_log.last_action_at()
+
+        return [
+            (person, summarise(counts.get(person.id, {})), last.get(person.id))
+            for person in self.users.staff()
+        ]
 
     def disputes(self, user: User) -> list[Dispute]:
         return self.users.disputes(user)

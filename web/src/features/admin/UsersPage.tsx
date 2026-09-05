@@ -6,7 +6,6 @@ import type { AdminUser, AdminUserRow, UserFilters } from '@/data/admin'
 import {
   USERS_PER_PAGE,
   useChangeRole,
-  useCreateStaff,
   useReactivateUser,
   useSuspendUser,
   useUser,
@@ -73,7 +72,6 @@ export function UsersPage() {
   const [filters, setFilters] = useState<UserFilters>({ q: '', role: null, status: null })
   const [pageNumber, setPageNumber] = useState(1)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [adding, setAdding] = useState(false)
 
   const users = useUsers(filters, pageNumber)
   const page = users.data
@@ -112,12 +110,13 @@ export function UsersPage() {
           )}
         </div>
 
-        <Button variant="secondary" onClick={() => setAdding((open) => !open)}>
-          {t('users.newStaff')}
-        </Button>
+        <Link
+          to="/admin/staff"
+          className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          {t('users.toStaff')}
+        </Link>
       </div>
-
-      {adding && <NewStaff onDone={() => setAdding(false)} />}
 
       <Filters filters={filters} onChange={changeFilters} />
 
@@ -588,92 +587,6 @@ function Actions({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
   )
 }
 
-function NewStaff({ onDone }: { onDone: () => void }) {
-  const { t } = useTranslation()
-  const message = useErrorMessage()
-  const create = useCreateStaff()
-
-  const [phone, setPhone] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Role>('moderator')
-
-  return (
-    <Card className="mb-6">
-      <h2 className="text-base font-semibold text-fg">{t('users.newStaff')}</h2>
-      <p className="mt-1 max-w-prose text-sm text-fg-subtle">{t('users.newStaffHint')}</p>
-
-      {create.error && (
-        <Alert tone="danger" className="mt-4">
-          {message(create.error)}
-        </Alert>
-      )}
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field
-          label={t('users.fullName')}
-          value={fullName}
-          onChange={(event) => setFullName(event.target.value)}
-        />
-        <Field
-          label={t('users.phone')}
-          numeric
-          inputMode="tel"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-        />
-        <Field
-          label={t('users.password')}
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-fg" htmlFor="new-staff-role">
-            {t('users.roleTitle')}
-          </label>
-          <select
-            id="new-staff-role"
-            className="h-11 rounded-md border border-border-strong bg-surface px-3 text-sm text-fg"
-            value={role}
-            onChange={(event) => setRole(event.target.value as Role)}
-          >
-            {(['moderator', 'admin'] as const).map((option) => (
-              <option key={option} value={option}>
-                {t(`roles.${option}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Button
-          loading={create.isPending}
-          disabled={!phone.trim() || !fullName.trim() || !password}
-          onClick={() =>
-            create.mutate(
-              { phone, full_name: fullName, password, role },
-              {
-                onSuccess: () => {
-                  setPhone('')
-                  setFullName('')
-                  setPassword('')
-                  onDone()
-                },
-              },
-            )
-          }
-        >
-          {t('users.create')}
-        </Button>
-        <Button variant="ghost" onClick={onDone}>
-          {t('job.keep')}
-        </Button>
-      </div>
-    </Card>
-  )
-}
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
