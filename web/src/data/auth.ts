@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, api, restoreSession } from '@/data/client'
+import { platformStore } from '@/data/platform'
 import { sessionStore } from '@/data/session'
 import type { LoginResponse, Me, Role } from '@/data/types'
 
@@ -90,6 +91,9 @@ export function useLogout() {
     // Even a failed call must sign the user out locally: they asked to leave.
     onSettled: () => {
       sessionStore.clear()
+      // A suspension screen belongs to the session that hit it. Leaving ends
+      // both, or S3 stays up over the landing page of a signed-out browser.
+      platformStore.clear()
       queryClient.setQueryData(SESSION_KEY, null)
       void queryClient.invalidateQueries()
     },

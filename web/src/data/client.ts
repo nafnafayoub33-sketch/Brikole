@@ -5,6 +5,7 @@
  * this.
  */
 
+import { platformStore } from '@/data/platform'
 import { sessionStore } from '@/data/session'
 import type { AccessToken } from '@/data/types'
 
@@ -61,7 +62,21 @@ async function refreshAccessToken(): Promise<string | null> {
         method: 'POST',
         credentials: 'include',
       })
-      if (!response.ok) return null
+      if (!response.ok) {
+        // This is the *first* call the app makes after a reload, and it is the
+        // one that meets a suspension or a closed platform. Reporting it here
+        // is what lets S3 and S4 replace the app instead of the person being
+        // quietly bounced to sign-in, where a failed refresh looks exactly
+        // like a session that simply expired.
+        const body = (await response.json().catch(() => null)) as {
+          code?: string
+          details?: Record<string, unknown>
+        } | null
+        reportPlatformState(
+          new ApiError(body?.code ?? 'generic', response.status, body?.details ?? {}),
+        )
+        return null
+      }
       const token = (await response.json()) as AccessToken
       sessionStore.set(token.access_token)
       return token.access_token
@@ -100,16 +115,42 @@ async function send<T>(path: string, options: RequestOptions, token: string | nu
     throw new ApiError('network', 0)
   }
 
-  if (response.status === 204) return undefined as T
+  if (response.status === 204) {
+    platformStore.succeeded({ authenticated: token !== null })
+    return undefined as T
+  }
 
   const payload: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
     const body = (payload ?? {}) as { code?: string; details?: Record<string, unknown> }
-    throw new ApiError(body.code ?? 'generic', response.status, body.details ?? {})
+    const error = new ApiError(body.code ?? 'generic', response.status, body.details ?? {})
+    reportPlatformState(error)
+    throw error
   }
 
+  platformStore.succeeded({ authenticated: token !== null })
   return payload as T
+}
+
+/**
+ * S3 and S4 are answers to *every* request, not to one screen's.
+ *
+ * The failing call could be any of a dozen, and an anonymous visitor never
+ * touches `useSession` at all, so the client is the only place that sees them
+ * all. It records the fact and one component at the root renders it.
+ */
+function reportPlatformState(error: ApiError): void {
+  if (error.code === 'maintenance') {
+    platformStore.close('maintenance', null)
+    return
+  }
+  if (error.code === 'account_suspended') {
+    platformStore.close('suspended', {
+      until: typeof error.details.until === 'string' ? error.details.until : null,
+      reason: typeof error.details.reason === 'string' ? error.details.reason : null,
+    })
+  }
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {

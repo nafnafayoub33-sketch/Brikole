@@ -18,9 +18,12 @@ from app.config import API_PREFIX, Settings, get_settings
 from app.core import security
 from app.core.enums import Role
 from app.core.errors import DomainError, ErrorCode
+from app.core.maintenance import is_closed
 from app.core.permissions import require_permission as _require_permission
+from app.core.policy import SettingKey
 from app.db import get_db
 from app.models.user import User
+from app.repositories.catalog import SettingsRepository
 from app.services.auth import AuthService
 from app.services.storage import LocalDiskStorage, StorageProvider
 
@@ -63,6 +66,41 @@ def get_current_user(request: Request, auth: AuthServiceDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def maintenance_gate(request: Request, db: DbSession, auth: AuthServiceDep) -> None:
+    """S4 — turn everyone but an admin away while the switch is on.
+
+    Mounted on the whole API rather than route by route, because a gate a
+    router can forget to declare is a gate that half the product does not have.
+
+    It reads the setting on every request: one primary-key lookup on a table
+    with a dozen rows, which MySQL serves out of the buffer pool. A TTL cache
+    would save that read and buy a window where the switch has been flipped and
+    the platform has not noticed — the wrong trade for a control an admin
+    reaches for when something is on fire. If it ever shows up in a profile,
+    cache it *then*, and write the staleness window down.
+
+    The token is only decoded once maintenance is known to be on, so the normal
+    path costs the read and nothing else.
+    """
+    if not SettingsRepository(db).get(SettingKey.MAINTENANCE_MODE):
+        return
+
+    try:
+        user = auth.user_from_token(
+            _bearer_token(request), expected_type=security.ACCESS_TOKEN
+        )
+        role: Role | None = user.role
+    except DomainError:
+        # No token, an expired one, or a suspended account. None of them is an
+        # admin, and the platform being closed is the larger fact — so it is
+        # the one the caller is told.
+        role = None
+
+    path = request.url.path.removeprefix(API_PREFIX)
+    if is_closed(maintenance_on=True, role=role, path=path):
+        raise DomainError(ErrorCode.MAINTENANCE)
 
 
 def require_roles(*roles: Role) -> Callable[[User], User]:

@@ -47,6 +47,9 @@ class ErrorCode(StrEnum):
     INSUFFICIENT_CREDIT = "insufficient_credit"
     AMOUNT_INVALID = "amount_invalid"
 
+    # the platform itself (S4)
+    MAINTENANCE = "maintenance"
+
 
 _STATUS: dict[ErrorCode, int] = {
     ErrorCode.PHONE_INVALID: 422,
@@ -71,6 +74,9 @@ _STATUS: dict[ErrorCode, int] = {
     ErrorCode.FORBIDDEN: 403,
     ErrorCode.INSUFFICIENT_CREDIT: 402,
     ErrorCode.NOT_FOUND: 404,
+    # 503, not 403: nothing is wrong with the request or the caller, and the
+    # answer changes the moment an admin flips the switch back.
+    ErrorCode.MAINTENANCE: 503,
 }
 
 

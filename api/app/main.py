@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.router import api_router
 from app.config import API_PREFIX, get_settings
 from app.core.errors import DomainError, ErrorCode
+from app.deps import maintenance_gate
 from app.schemas.common import ErrorOut
 
 
@@ -63,7 +64,11 @@ def create_app() -> FastAPI:
         body = ErrorOut(code=code.value).model_dump(exclude_none=True)
         return JSONResponse(status_code=exc.status_code, content=body)
 
-    app.include_router(api_router, prefix=API_PREFIX)
+    # S4 sits on the whole API, not route by route: a gate a router can forget
+    # to declare is a gate half the product does not have.
+    app.include_router(
+        api_router, prefix=API_PREFIX, dependencies=[Depends(maintenance_gate)]
+    )
     return app
 
 

@@ -1140,6 +1140,7 @@ const ar = {
     last_admin: 'هادا آخر أدمين مفعّل. خاص واحد آخر باش تقدر تدير هاد الشي.',
     role_not_assignable: 'هاد الدور ما كيتعطاش من هنا. المعلّم كيدوز من الطلب، والزبون كيسجّل بوحدو.',
     provider_role_locked: 'هاد الحساب عندو ملف ديال معلّم. العروض والخدمات والرصيد كلهم معلّقين فيه، على هاد الساس الدور ما كيتبدلش.',
+    maintenance: 'المنصة محلولة دابا للصيانة. عاود من بعد شوية.',
   },
   nav: {
     newRequest: 'طلب جديد',
@@ -1199,6 +1200,15 @@ const ar = {
     deleteUnderstand: 'فهمت: الرقم ديالي كيبقى مربوط بهاد الحساب المسدود، وما نقدرش نعاود نسجّل بيه — غير المدير اللي يقدر يفتحو.',
     deleteBlockedJobs: 'عندك خدمة مازال ما سالاتش. سالي معاها ولا ألغيها قبل ما تسدّ الحساب — الطرف الآخر كيتسنّاك.',
     deleteBlockedDisputes: 'عندك نزاع مازال مفتوح. المشرف خاصو يقرّر فيه قبل ما يتسدّ الحساب.',
+  },
+  platform: {
+    maintenanceTitle: 'المنصة محلولة دابا',
+    maintenanceBody: 'كنخدمو على شي حاجة صغيرة. رجع من بعد شوية — كلشي ديالك باقي فبلاصتو.',
+    retry: 'عاود جرّب',
+    suspendedTitle: 'هاد الحساب موقّف',
+    suspendedUntil: 'موقّف حتى {{date}}.',
+    suspendedForever: 'موقّف بشكل نهائي.',
+    suspendedContact: 'إلا كنتي شايف بلي كاين شي غلط، تواصل مع المدير من نفس الرقم ديال الحساب.',
   },
   forbidden: {
     title: 'هاد الصفحة ماشي ديالك',
@@ -2314,6 +2324,7 @@ const fr = {
     last_admin: 'C’est le dernier admin actif. Il en faut un autre avant de faire ça.',
     role_not_assignable: 'Ce rôle ne se donne pas d’ici. Un m3allem passe par une demande, un client s’inscrit lui-même.',
     provider_role_locked: 'Ce compte a un profil de m3allem. Ses offres, ses travaux et son crédit y sont rattachés, donc le rôle ne change pas.',
+    maintenance: 'La plateforme est en maintenance. Réessayez dans un moment.',
   },
   nav: {
     newRequest: 'Nouvelle demande',
@@ -2373,6 +2384,15 @@ const fr = {
     deleteUnderstand: 'J’ai compris : mon numéro reste attaché à ce compte fermé et je ne pourrai pas m’inscrire à nouveau avec — seul un administrateur peut le rouvrir.',
     deleteBlockedJobs: 'Vous avez un travail en cours. Terminez-le ou annulez-le avant de fermer le compte : l’autre partie vous attend.',
     deleteBlockedDisputes: 'Vous avez un litige ouvert. Un modérateur doit trancher avant que le compte puisse être fermé.',
+  },
+  platform: {
+    maintenanceTitle: 'La plateforme est en maintenance',
+    maintenanceBody: 'Nous travaillons dessus. Revenez dans un moment — tout ce qui est à vous est là où vous l’avez laissé.',
+    retry: 'Réessayer',
+    suspendedTitle: 'Ce compte est suspendu',
+    suspendedUntil: 'Suspendu jusqu’au {{date}}.',
+    suspendedForever: 'Suspendu définitivement.',
+    suspendedContact: 'Si vous pensez que c’est une erreur, contactez l’administrateur depuis le numéro du compte.',
   },
   forbidden: {
     title: 'Cette page n’est pas pour vous',
@@ -3488,6 +3508,7 @@ const en = {
     last_admin: 'That is the last active admin. There has to be another one first.',
     role_not_assignable: 'That role is not given out here. A tradesman applies; a client signs up.',
     provider_role_locked: 'This account has a tradesman profile. Its offers, jobs and credit all hang off it, so the role does not change.',
+    maintenance: 'The platform is down for maintenance. Try again in a moment.',
   },
   nav: {
     newRequest: 'New request',
@@ -3547,6 +3568,15 @@ const en = {
     deleteUnderstand: 'I understand: my number stays attached to this closed account and I cannot register with it again — only an admin can reopen it.',
     deleteBlockedJobs: 'You have a job that is not finished. Finish or cancel it before closing the account — the other side is waiting on you.',
     deleteBlockedDisputes: 'You have an open dispute. A moderator has to rule on it before the account can be closed.',
+  },
+  platform: {
+    maintenanceTitle: 'The platform is down for maintenance',
+    maintenanceBody: 'We are working on it. Come back in a moment — everything of yours is where you left it.',
+    retry: 'Try again',
+    suspendedTitle: 'This account is suspended',
+    suspendedUntil: 'Suspended until {{date}}.',
+    suspendedForever: 'Suspended permanently.',
+    suspendedContact: 'If you think this is a mistake, contact the admin from the number on the account.',
   },
   forbidden: {
     title: 'This page is not yours',

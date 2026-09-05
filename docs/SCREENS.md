@@ -861,5 +861,39 @@ lists every account; this lists the people who can change them.
 
 ### S1 · Not found — `*`
 ### S2 · No permission — shown when a route does not match the role, with a link to that role's home. Never a blank page.
-### S3 · Suspended — replaces the whole app for a suspended account, with the reason and until when.
-### S4 · Maintenance — when A7's switch is on. Admins still get in.
+### S3 · Suspended
+Replaces the whole app for a suspended account, with the reason an admin typed on
+A3 and the date it lifts (or that it does not). Two ways back: **try again**,
+because a timed suspension lifts itself on the way in and there is nothing to
+wait out alone, and **sign out**.
+
+### S4 · Maintenance
+When A7's switch is on, and admins still get in — otherwise the platform locks
+its own keys inside. Closed to everyone else, including the anonymous visitor on
+the landing page: "we are down" is a better answer than a list of tradesmen who
+cannot be contacted.
+
+- Enforced by one dependency on the whole API, not route by route: a gate a
+  router can forget to declare is a gate half the product does not have.
+- `/health` stays open, so a monitor does not go red because somebody flipped a
+  switch, and so do `/auth/login`, `/auth/refresh` and `/auth/logout`. Anyone can
+  sign in during maintenance and then meets S4 on the next call — a truer answer
+  than "wrong password".
+- The switch is read on every request rather than cached. One primary-key lookup
+  on a dozen rows, against a window where the switch has moved and the platform
+  has not noticed: the wrong trade for a control an admin reaches for when
+  something is on fire.
+
+### Both
+Neither is a route. A suspended account and a closed platform are true of *every*
+screen at once, and routing to `/suspended` would leave the person one back
+button away from a shell whose every request fails — so `PlatformGate` sits above
+the router and swaps the tree.
+
+The api client is what notices, because it is the only thing that sees every
+call: an anonymous visitor never touches `useSession`, and the first call a
+reloaded page makes is `/auth/refresh`, where a suspension otherwise looks
+exactly like a session that expired. What clears them is asymmetric on purpose —
+maintenance is about the platform, so any answer disproves it; a suspension is
+about the person, and the public endpoints keep answering 200 for a suspended
+account, so only a call carrying his token lifts it.
