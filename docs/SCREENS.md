@@ -227,9 +227,34 @@ Trades & cities · Settings · Audit log.
   please confirm · dispute answered. Read/unread, mark all read.
 
 ### C7 · Account — `/client/account`
-- Name, photo, phone (read-only — it is the identity), city, language, change
-  password, sign out, delete account (confirms twice, and refuses while a job is
-  running).
+One screen, three roles: C7, **M11** and **D4** are the same component on three
+routes, because a client, a tradesman and a moderator edit the same row. Only
+`app/routes.tsx` knows that, so no feature imports another.
+
+- Photo, name, city, language, change password, sign out, close the account.
+- **The phone is shown and cannot be changed.** It is the identity — it signs him
+  in, and it is what an admin asks for on the P6 call. The screen says that,
+  rather than leaving a greyed-out box to be argued with. There is no `phone`
+  field on `PATCH /account` at all: absent, not ignored.
+- **The language switches as it is picked**, like every other language control in
+  the app, and saving is what attaches it to the account. It is deliberately *not*
+  seeded from the stored preference: the header switcher changes the interface
+  without saving, so seeding from the stored value would make "save" on a name
+  change silently flip the whole app.
+- A tradesman gets one extra line pointing at **M8** — the headline, the bio and
+  the trades a client reads are not here, and somebody will come looking.
+- **Closing it confirms twice**: "are you sure", then a tick on the consequence
+  itself — past jobs and reviews stay because other people are in them, the
+  number stays attached to the closed account, and only an admin can reopen it.
+- **Refused while work is live**, and named: a job that is `assigned`,
+  `in_progress` or `done` (`done` most of all — the client has not confirmed, so
+  the review, the credit and the dispute window all still hang off it), or a
+  dispute nobody has ruled on. `GET /account/commitments` answers before the
+  button is offered, so he reads which one is holding him instead of pressing and
+  getting a 409.
+- Closing sets `deleted` rather than removing the row: every job, review and audit
+  row points at it. Tokens stop working on the next request, and `_reachable`
+  drops a closed tradesman out of search on the same status.
 
 ### C8 · Open a dispute — `/client/jobs/:id/dispute`
 - **Contents:** reason from a fixed list (never came, work not done, damage, price
@@ -413,7 +438,9 @@ on either button.
 - Rating breakdown and the reviews themselves. He may reply once to each.
 
 ### M11 · Account — `/pro/account`
-- Same as C7, plus notification preferences per trade.
+- The same screen as C7, wearing the tradesman's layout, plus the line pointing
+  at M8. Notification preferences per trade wait for **C6** — there is nothing to
+  set preferences *about* until notifications exist.
 
 ---
 
@@ -569,6 +596,8 @@ The same thread as C9, from the tradesman's side, drawn by the same component.
 - Handling writes an `audit_log` row with the outcome and the reason.
 
 ### D4 · Account — `/mod/account`
+- The same screen as C7 again. A moderator has no shop window, so the M8 line is
+  not there; everything else is identical.
 
 ---
 

@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import ColumnElement, func, or_, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.account import LIVE_DISPUTES, LIVE_JOBS
 from app.core.enums import JobStatus, Role, UserStatus
 from app.models.dispute import Dispute
 from app.models.job import Job, Review
@@ -34,6 +35,19 @@ class UserActivity:
     disputes_against: int
     #: Rows this person wrote into the audit log. Zero for everyone but staff.
     staff_actions: int
+
+
+@dataclass(frozen=True, slots=True)
+class Commitments:
+    """C7. What somebody else is still relying on this account for.
+
+    Counted across both sides at once, because a client and a tradesman are the
+    same row: the man closing his account may be halfway through a job he is
+    doing *and* one he is paying for.
+    """
+
+    live_jobs: int
+    live_disputes: int
 
 
 class UserRepository:
@@ -204,6 +218,33 @@ class UserRepository:
             disputes_opened=self._count(Dispute, Dispute.opened_by_id == user.id),
             disputes_against=self._count(Dispute, Dispute.against_id == user.id),
             staff_actions=self._count(AuditLog, AuditLog.actor_id == user.id),
+        )
+
+    def commitments(self, user: User) -> Commitments:
+        """What is unfinished, either side of this account.
+
+        `LIVE_JOBS` and `LIVE_DISPUTES` are in `core.account` beside the rule
+        that reads them, so "what counts as unfinished" is defined once and the
+        screen and the refusal cannot drift apart.
+        """
+        profile_id = user.provider_profile.id if user.provider_profile else None
+
+        sides: list[ColumnElement[bool]] = [Job.client_id == user.id]
+        if profile_id is not None:
+            sides.append(Job.provider_id == profile_id)
+
+        return Commitments(
+            live_jobs=self._count(Job, and_(Job.status.in_(LIVE_JOBS), or_(*sides))),
+            live_disputes=self._count(
+                Dispute,
+                and_(
+                    Dispute.status.in_(LIVE_DISPUTES),
+                    or_(
+                        Dispute.opened_by_id == user.id,
+                        Dispute.against_id == user.id,
+                    ),
+                ),
+            ),
         )
 
     def disputes(self, user: User, *, limit: int = 20) -> list[Dispute]:

@@ -4,6 +4,7 @@ import { AppLayout } from '@/app/layouts/AppLayout'
 import { PublicLayout } from '@/app/layouts/PublicLayout'
 import { ADMIN_NAV, CLIENT_NAV, MOD_NAV, PRO_NAV } from '@/app/nav'
 import { RequireRole } from '@/app/RequireRole'
+import { AccountPage } from '@/features/account/AccountPage'
 import { ForgotPage } from '@/features/auth/ForgotPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
@@ -91,7 +92,9 @@ export function AppRoutes() {
         <Route path="disputes" element={<MyDisputesPage />} />
         <Route path="disputes/:id" element={<MyDisputePage />} />
         <Route path="notifications" element={<NotBuilt screen="C6" />} />
-        <Route path="account" element={<NotBuilt screen="C7" />} />
+        {/* C7, M11 and D4 are one screen: the same row, three layouts around
+            it. Only this file knows that, so no feature imports another. */}
+        <Route path="account" element={<AccountPage />} />
       </Route>
 
       <Route
@@ -115,7 +118,7 @@ export function AppRoutes() {
         <Route path="reviews" element={<NotBuilt screen="M10" />} />
         <Route path="disputes" element={<MyDisputesPage />} />
         <Route path="disputes/:id" element={<MyDisputePage />} />
-        <Route path="account" element={<NotBuilt screen="M11" />} />
+        <Route path="account" element={<AccountPage />} />
       </Route>
 
       {/* An admin can do everything a moderator can, so he is allowed here
@@ -132,7 +135,7 @@ export function AppRoutes() {
         <Route path="disputes" element={<DisputesPage />} />
         <Route path="disputes/:id" element={<ModDisputePage />} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="account" element={<NotBuilt screen="D4" />} />
+        <Route path="account" element={<AccountPage />} />
       </Route>
 
       <Route
