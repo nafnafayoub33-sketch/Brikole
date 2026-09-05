@@ -628,21 +628,29 @@ What it refuses, and why:
   history.
 
 ### A7 · Settings — `/admin/settings`
-- Default lead fee, free leads for a new tradesman, request cap per client, offer
-  expiry, dispute window, how many clients a tradesman may try to hand his number
-  to before staff hear about it, the platform's bank details shown at M9, and
-  maintenance mode. Every change is audited with the old and the new value.
+- The fee per accepted job and the monthly price of placement; free jobs for a
+  new tradesman, request cap per client, offer expiry, request expiry, auto-confirm,
+  dispute window, default radius, and how many clients a tradesman may try to hand
+  his number to before staff hear about it; the platform's bank details shown at
+  M9; and maintenance mode. Every change is audited with the old and the new value.
+- **Every editable key is on the screen.** A setting the API accepts and the form
+  does not show is one only a developer with curl can change.
 - **Every value is bounded in `core/settings_rules.py`**, not trusted. A lead fee
   of zero makes the business free and a request cap of zero makes the product
   unusable — both are one mistyped digit away on this form.
-- **A bad value rejects the whole batch.** Saving three fields and refusing the
-  fourth leaves the admin guessing which of them landed.
+- **A bad value rejects the whole batch**, and the screen says which field it
+  was, in words. Saving three fields and refusing the fourth leaves the admin
+  guessing which of them landed; "something is incorrect" leaves him guessing
+  which of eleven numbers to fix.
 - **A partial write only touches the keys it was sent**, so two admins editing
   different halves of the screen do not overwrite each other.
 - **Writing the same value is not a line in the log.** An audit trail padded with
   no-ops is one nobody reads.
 - A key nobody has ever changed shows as the shipped default rather than
   implying somebody chose it.
+- **A cleared field is not a zero.** `Number('')` is 0 and free jobs accepts 0,
+  so reading a blank literally would take every new tradesman's free jobs away
+  because somebody selected the box and pressed save. Blank means unchanged.
 
 ### A8 · Audit log — `/admin/audit`
 - Who did what to whom and when, filterable by actor, action and target. Read-only,

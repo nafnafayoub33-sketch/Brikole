@@ -7,6 +7,7 @@ import {
   type BankValue,
   type Setting,
 } from '@/data/admin'
+import { ApiError } from '@/data/client'
 import { formatDate } from '@/lib/format'
 import type { Language } from '@/lib/i18n'
 import { Alert } from '@/ui/Alert'
@@ -25,9 +26,22 @@ import { Skeleton } from '@/ui/Skeleton'
  * rather than quietly making the business free.
  */
 
-const FEE = 'default_lead_fee_centimes'
 const BANK = 'bank_transfer'
 const MAINTENANCE = 'maintenance_mode'
+
+/** Money, held in centimes and typed in dirhams. */
+const DIRHAMS: { key: string; labelKey: string; hintKey: string }[] = [
+  {
+    key: 'default_lead_fee_centimes',
+    labelKey: 'settings.defaultLeadFee',
+    hintKey: 'settings.defaultLeadFeeHint',
+  },
+  {
+    key: 'boost_monthly_centimes',
+    labelKey: 'settings.boostMonthly',
+    hintKey: 'settings.boostMonthlyHint',
+  },
+]
 
 const COUNTS: { key: string; labelKey: string; hintKey?: string }[] = [
   { key: 'free_leads_new_provider', labelKey: 'settings.freeLeads', hintKey: 'settings.freeLeadsHint' },
@@ -41,6 +55,11 @@ const COUNTS: { key: string; labelKey: string; hintKey?: string }[] = [
   { key: 'auto_confirm_days', labelKey: 'settings.autoConfirm' },
   { key: 'dispute_window_days', labelKey: 'settings.disputeWindow' },
   { key: 'default_radius_km', labelKey: 'settings.defaultRadius' },
+  {
+    key: 'contact_flag_threshold',
+    labelKey: 'settings.contactFlag',
+    hintKey: 'settings.contactFlagHint',
+  },
 ]
 
 const BANK_FIELDS: { field: keyof BankValue; labelKey: string }[] = [
@@ -51,11 +70,28 @@ const BANK_FIELDS: { field: keyof BankValue; labelKey: string }[] = [
 
 const EMPTY_BANK: BankValue = { bank_name: '', account_holder: '', rib: '', instructions: '' }
 
+/** Every editable key by its label, so a rejection can name the field in words
+ *  rather than handing the admin `boost_monthly_centimes`. */
+const LABELS: Record<string, string> = {
+  ...Object.fromEntries(DIRHAMS.map(({ key, labelKey }) => [key, labelKey])),
+  ...Object.fromEntries(COUNTS.map(({ key, labelKey }) => [key, labelKey])),
+  [BANK]: 'settings.bank',
+  [MAINTENANCE]: 'settings.maintenance',
+}
+
 export function SettingsPage() {
   const { t, i18n } = useTranslation()
   const language = i18n.language as Language
   const settings = useSettings()
   const update = useUpdateSettings()
+
+  // The API rejects the whole batch and names the key that failed. Passing
+  // that to the field it belongs to is the difference between "something is
+  // incorrect" and knowing which of eleven numbers to fix.
+  const rejected =
+    update.error instanceof ApiError && update.error.code === 'validation_failed'
+      ? String(update.error.details.field ?? '')
+      : null
 
   const [numbers, setNumbers] = useState<Record<string, string>>({})
   const [bank, setBank] = useState<BankValue>(EMPTY_BANK)
@@ -68,7 +104,9 @@ export function SettingsPage() {
     const byKey = new Map(settings.data.items.map((item) => [item.key, item]))
 
     const seeded: Record<string, string> = {}
-    seeded[FEE] = String(Math.round(Number(byKey.get(FEE)?.value ?? 0) / 100))
+    for (const { key } of DIRHAMS) {
+      seeded[key] = String(Math.round(Number(byKey.get(key)?.value ?? 0) / 100))
+    }
     for (const { key } of COUNTS) seeded[key] = String(byKey.get(key)?.value ?? 0)
     setNumbers(seeded)
 
@@ -99,12 +137,26 @@ export function SettingsPage() {
   function save() {
     const values: Record<string, unknown> = {}
 
-    const fee = Math.round(Number(numbers[FEE]) * 100)
-    if (Number.isFinite(fee) && fee !== byKey.get(FEE)?.value) values[FEE] = fee
+    // A blank field is a field he cleared to retype, not a zero he meant.
+    // `Number('')` is 0, and `free_leads_new_provider` accepts 0 — so reading
+    // it literally would take every new tradesman's free jobs away because
+    // somebody selected the box and pressed save.
+    const typed = (key: string) => {
+      const raw = numbers[key]
+      return raw !== undefined && raw.trim() !== '' ? Number(raw) : null
+    }
+
+    for (const { key } of DIRHAMS) {
+      const dirhams = typed(key)
+      if (dirhams === null || !Number.isFinite(dirhams)) continue
+      const centimes = Math.round(dirhams * 100)
+      if (centimes !== byKey.get(key)?.value) values[key] = centimes
+    }
 
     for (const { key } of COUNTS) {
-      const parsed = Number(numbers[key])
-      if (Number.isInteger(parsed) && parsed !== byKey.get(key)?.value) values[key] = parsed
+      const parsed = typed(key)
+      if (parsed === null || !Number.isInteger(parsed)) continue
+      if (parsed !== byKey.get(key)?.value) values[key] = parsed
     }
 
     const storedBank = { ...EMPTY_BANK, ...((byKey.get(BANK)?.value as BankValue) ?? {}) }
@@ -128,18 +180,25 @@ export function SettingsPage() {
 
       <Card className="mt-6">
         <h2 className="text-lg font-bold text-fg">{t('settings.money')}</h2>
-        <div className="mt-5">
-          <Field
-            label={t('settings.defaultLeadFee')}
-            type="number"
-            numeric
-            min={1}
-            prefix="DH"
-            value={numbers[FEE] ?? ''}
-            onChange={(event) => setNumbers((n) => ({ ...n, [FEE]: event.target.value }))}
-          />
-          <p className="mt-2 text-xs text-fg-subtle">{t('settings.defaultLeadFeeHint')}</p>
-          <Provenance entry={byKey.get(FEE)} language={language} />
+        <div className="mt-5 flex flex-col gap-6">
+          {DIRHAMS.map(({ key, labelKey, hintKey }) => (
+            <div key={key}>
+              <Field
+                label={t(labelKey)}
+                type="number"
+                numeric
+                min={1}
+                prefix="DH"
+                error={rejected === key ? t('settings.rejected') : null}
+                value={numbers[key] ?? ''}
+                onChange={(event) =>
+                  setNumbers((n) => ({ ...n, [key]: event.target.value }))
+                }
+              />
+              <p className="mt-2 text-xs text-fg-subtle">{t(hintKey)}</p>
+              <Provenance entry={byKey.get(key)} language={language} />
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -153,6 +212,7 @@ export function SettingsPage() {
                 type="number"
                 numeric
                 min={0}
+                error={rejected === key ? t('settings.rejected') : null}
                 value={numbers[key] ?? ''}
                 onChange={(event) =>
                   setNumbers((n) => ({ ...n, [key]: event.target.value }))
@@ -213,7 +273,13 @@ export function SettingsPage() {
 
       {update.isError && (
         <div className="mt-6">
-          <ErrorState error={update.error} />
+          {rejected ? (
+            <Alert tone="danger">
+              {t('settings.rejectedBatch', { field: t(LABELS[rejected] ?? rejected) })}
+            </Alert>
+          ) : (
+            <ErrorState error={update.error} />
+          )}
         </div>
       )}
       {update.isSuccess && !update.isPending && (
