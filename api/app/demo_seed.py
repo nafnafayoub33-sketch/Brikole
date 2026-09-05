@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.core.enums import (
     JobStatus,
+    NotificationKind,
     OfferStatus,
     ProviderStatus,
     RequestStatus,
@@ -43,6 +44,7 @@ from app.models.job import Job, Review
 from app.models.offer import Offer
 from app.models.provider import ProviderProfile, provider_trades
 from app.models.request import RequestPhoto, ServiceRequest
+from app.models.system import Notification
 from app.models.user import User
 
 DEMO_PASSWORD = "demo1234"
@@ -1205,6 +1207,92 @@ def seed_pending_applications(db: Session, *, total: int, rng: random.Random) ->
     return created
 
 
+def seed_notifications(db: Session, *, rng: random.Random) -> int:
+    """C6 with something in it.
+
+    Built from the demo client's *own* rows rather than invented, so every line
+    links to a screen that exists and shows the real name and the real price —
+    a demo inbox whose links go nowhere teaches the wrong thing about the
+    screen.
+    """
+    clients = list(
+        db.execute(
+            select(User).where(User.phone.like(f"{DEMO_CLIENT_PREFIX}%")).order_by(User.phone)
+        ).scalars()
+    )
+    if not clients:
+        return 0
+    client = clients[DEMO_CLIENT_INDEX]
+
+    already = db.execute(
+        select(func.count())
+        .select_from(Notification)
+        .where(Notification.user_id == client.id)
+    ).scalar_one()
+    if already:
+        return 0
+
+    rows: list[Notification] = []
+
+    # One per offer sitting on his open requests — which is exactly what he
+    # would have been sent as they arrived.
+    offers = list(
+        db.execute(
+            select(Offer, ServiceRequest, User)
+            .join(ServiceRequest, ServiceRequest.id == Offer.request_id)
+            .join(ProviderProfile, ProviderProfile.id == Offer.provider_id)
+            .join(User, User.id == ProviderProfile.user_id)
+            .where(
+                ServiceRequest.client_id == client.id,
+                ServiceRequest.status == RequestStatus.OPEN,
+            )
+            .order_by(Offer.id)
+            .limit(6)
+        )
+    )
+    for offer, request, provider_user in offers:
+        rows.append(
+            Notification(
+                user_id=client.id,
+                kind=NotificationKind.OFFER_RECEIVED,
+                payload={
+                    "request_id": request.id,
+                    "price_centimes": offer.price_centimes,
+                    "provider_name": provider_user.full_name,
+                },
+            )
+        )
+
+    # And one asking him to confirm a job that is finished but unconfirmed —
+    # the row C6 exists to make impossible to miss.
+    job = db.execute(
+        select(Job)
+        .where(Job.client_id == client.id, Job.status == JobStatus.CONFIRMED)
+        .order_by(Job.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if job is not None:
+        rows.append(
+            Notification(
+                user_id=client.id,
+                kind=NotificationKind.JOB_DONE,
+                payload={"job_id": job.id},
+            )
+        )
+
+    # Spread them over the last few days, newest last, so the list is not one
+    # timestamp repeated.
+    now = utcnow()
+    for index, row in enumerate(reversed(rows)):
+        row.created_at = now - timedelta(hours=6 * index + rng.randint(0, 5))
+        # Most of them read, the newest two not: a screen where everything is
+        # unread never shows what read looks like.
+        row.read_at = None if index < 2 else row.created_at + timedelta(minutes=20)
+        db.add(row)
+
+    return len(rows)
+
+
 def main() -> int:
     settings = get_settings()
     if settings.is_production:
@@ -1223,6 +1311,7 @@ def main() -> int:
         joined = backfill_signup_dates(db, rng=rng)
         details = backfill_request_details(db, rng=rng)
         waiting = seed_pending_applications(db, total=6, rng=rng)
+        inbox = seed_notifications(db, rng=rng)
 
     print(f"demo tradesmen created: {created}, headlines backfilled: {backfilled}")
     print(f"jobs: {jobs}, reviews: {reviews}, bios: {bios}, comments: {comments}")
@@ -1230,6 +1319,7 @@ def main() -> int:
     print(f"request descriptions and addresses filled in: {details}")
     print(f"credit ledger rows written: {ledger}, sign-up dates spread: {joined}")
     print(f"applications waiting for an admin: {waiting}")
+    print(f"notifications in the demo client's inbox: {inbox}")
     print(f"they all sign in with the password {DEMO_PASSWORD!r}")
     return 0
 

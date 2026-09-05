@@ -7,7 +7,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.enums import OfferStatus, ProviderStatus, RequestStatus, Role
+from app.core.enums import (
+    NotificationKind,
+    OfferStatus,
+    ProviderStatus,
+    RequestStatus,
+    Role,
+)
 from app.core.errors import DomainError, ErrorCode
 from app.core.offer import can_send_offer, validate_offer
 from app.core.policy import SettingKey, lead_fee_for
@@ -20,6 +26,7 @@ from app.models.user import User
 from app.repositories.catalog import SettingsRepository
 from app.repositories.offers import OfferRepository
 from app.schemas.offer import NewOfferIn
+from app.services.notifications import notify
 
 
 class OfferService:
@@ -188,6 +195,18 @@ class OfferService:
             )
             self.db.add(offer)
             request.offers_count += 1
+
+            # C6, and only on a *new* offer. An edit shows up in the same place
+            # on C3 with a fresh price; a notification per price tweak is how a
+            # client learns to stop looking at the bell.
+            notify(
+                self.db,
+                user_id=request.client_id,
+                kind=NotificationKind.OFFER_RECEIVED,
+                request_id=request.id,
+                price_centimes=new.price_centimes,
+                provider_name=profile.user.full_name,
+            )
 
         self.db.commit()
         self.db.refresh(offer)

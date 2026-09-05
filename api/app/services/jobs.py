@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.enums import (
     CancelledBy,
     JobStatus,
+    NotificationKind,
     OfferStatus,
     ProviderStatus,
     RequestStatus,
@@ -33,6 +34,7 @@ from app.repositories.jobs import JobRepository
 from app.repositories.requests import RequestRepository
 from app.schemas.job import NewReviewIn
 from app.services import lead_fee
+from app.services.notifications import notify
 
 
 class JobService:
@@ -206,8 +208,23 @@ class JobService:
         job.status = target
         if target is JobStatus.IN_PROGRESS:
             job.started_at = now
+            # C6. The client is the one waiting at a door, so he is the one
+            # told — both of these are the tradesman's move, and the news is
+            # for the other side.
+            notify(
+                self.db,
+                user_id=job.client_id,
+                kind=NotificationKind.JOB_STARTED,
+                job_id=job.id,
+            )
         elif target is JobStatus.DONE:
             job.finished_at = now
+            notify(
+                self.db,
+                user_id=job.client_id,
+                kind=NotificationKind.JOB_DONE,
+                job_id=job.id,
+            )
         elif target is JobStatus.CONFIRMED:
             job.confirmed_at = now
             self.jobs.request_for(job).status = RequestStatus.DONE

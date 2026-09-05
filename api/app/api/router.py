@@ -19,6 +19,7 @@ from app.api.routes import (
     disputes,
     health,
     jobs,
+    notifications,
     offers,
     pro,
     providers,
@@ -41,6 +42,7 @@ api_router.include_router(pro.router)
 api_router.include_router(requests.router)
 api_router.include_router(reports.router)
 api_router.include_router(jobs.router)
+api_router.include_router(notifications.router)
 api_router.include_router(offers.router)
 api_router.include_router(admin.router)
 api_router.include_router(admin_catalog.router)

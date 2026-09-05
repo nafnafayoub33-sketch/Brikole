@@ -24,6 +24,7 @@ from app.core.dispute import (
 from app.core.enums import (
     DisputeStatus,
     DisputeVerdict,
+    NotificationKind,
     Role,
     TransactionType,
     UserStatus,
@@ -42,6 +43,7 @@ from app.repositories.jobs import JobRepository
 from app.schemas.dispute import DisputeMessageIn, NewDisputeIn, ResolveDisputeIn
 from app.services import audit
 from app.services.audit import AuditAction
+from app.services.notifications import notify
 
 #: How long a suspension handed down here lasts. A moderator may pause somebody
 #: for two days; taking an account away for good is an admin's decision.
@@ -194,6 +196,13 @@ class DisputeService:
             dispute_id=dispute.id, author_id=user.id, body=body, is_internal=internal
         )
         self.db.add(message)
+
+        # C6 — "dispute answered". An internal note is staff talking to staff,
+        # so it notifies nobody: telling a client something was said that he
+        # cannot read is worse than saying nothing.
+        if not internal:
+            self._notify_parties(dispute, except_for=user.id)
+
         self.db.commit()
         self.db.refresh(message)
         return message
@@ -259,9 +268,27 @@ class DisputeService:
             ip=ip,
         )
 
+        self._notify_parties(dispute, except_for=user.id)
+
         self.db.commit()
         self.db.refresh(dispute)
         return dispute
+
+    def _notify_parties(self, dispute: Dispute, *, except_for: int) -> None:
+        """Both sides of the argument, minus whoever just spoke.
+
+        Staff are not in this list. A moderator works from D1, which is a queue
+        he opens on purpose; a notification per message would fill his bell
+        with his own job.
+        """
+        for user_id in (dispute.opened_by_id, dispute.against_id):
+            if user_id != except_for:
+                notify(
+                    self.db,
+                    user_id=user_id,
+                    kind=NotificationKind.DISPUTE_UPDATE,
+                    dispute_id=dispute.id,
+                )
 
     def _refund_lead_fee(self, job: Job, actor: User, dispute: Dispute) -> bool:
         """Hand the fee back, with the ledger row that explains it.

@@ -223,8 +223,35 @@ Trades & cities · Settings · Audit log.
 - → C2
 
 ### C6 · Notifications — `/client/notifications`
-- Offer received · offer about to expire · tradesman on his way · work finished,
-  please confirm · dispute answered. Read/unread, mark all read.
+His inbox: an offer arrived, the m3allem is on his way, the work is finished and
+needs confirming, there is news on his dispute. Read/unread, and mark all read.
+
+- **The API never ships a sentence.** A row is a `kind` and a `payload` of ids
+  and numbers; the wording lives in `src/lib/i18n.ts` in all three languages.
+  A row holding "Karim a envoyé une offre" is a row that stays French after the
+  person switches to Arabic.
+- **Written in the same transaction as the event**, the way `audit.record` is —
+  so a refused offer leaves no notification promising one. `notify()` is the
+  helper, and it is easier to call than to skip.
+- **Every line is a link**, because every one of them is a thing to go and do.
+  The payload carries the request, job or dispute id it points at.
+- **Opening one marks it read; the list marks nothing.** A glance at the bell
+  should not erase what he has not looked at. Re-reading one keeps the first
+  time — re-stamping it would move a thing that already happened.
+- The count rides on the nav item, so he sees it from any screen.
+- Notified about the other side's move, never his own: starting and finishing a
+  job are the tradesman's, so the client is the one told. An internal note on a
+  dispute notifies nobody — telling a client something was said that he cannot
+  read is worse than saying nothing.
+
+**Not built, and why:** *offer about to expire*. Offers do not expire at all —
+`offer_expiry_days` is validated, bounded, stored and read by nothing, exactly as
+`maintenance_mode` was before S4. Notifying about an expiry that never happens
+would be worse than the gap. Making offers actually expire touches C3, M6 and the
+accept path, so it is its own piece of work rather than a corner of this one.
+
+**Push notifications** are Phase 4 alongside SMS: this is an in-app inbox, and
+nothing here reaches a phone that is not looking at the site.
 
 ### C7 · Account — `/client/account`
 One screen, three roles: C7, **M11** and **D4** are the same component on three

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { useUnreadChats } from '@/data/chat'
+import { useUnreadNotifications } from '@/data/notifications'
 import { cn } from '@/ui/cn'
 import { LanguageSelect } from '@/ui/LanguageSelect'
 import { ThemeToggle } from '@/ui/ThemeToggle'
@@ -14,6 +15,9 @@ export interface NavItem {
   /** Marks the item that owns the chats, so it can carry the unread count.
    *  Only one item per role has it, and the roles without one never ask. */
   chats?: boolean
+  /** Same, for C6. Only the client has an inbox screen today, so only his
+   *  shell asks for the number. */
+  notifications?: boolean
 }
 
 /**
@@ -25,6 +29,9 @@ export function AppLayout({ items }: { items: NavItem[] }) {
   // A moderator has no conversations, so his shell never asks for a count.
   const unread = useUnreadChats(items.some((item) => item.chats))
   const waiting = unread.data?.count ?? 0
+
+  const inbox = useUnreadNotifications(items.some((item) => item.notifications))
+  const unopened = inbox.data?.count ?? 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -48,14 +55,8 @@ export function AppLayout({ items }: { items: NavItem[] }) {
                 }
               >
                 {t(item.labelKey)}
-                {item.chats && waiting > 0 && (
-                  <span
-                    className="numeric ms-1.5 inline-flex min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-fg"
-                    aria-label={t('nav.unread', { count: waiting })}
-                  >
-                    {waiting}
-                  </span>
-                )}
+                {item.chats && waiting > 0 && <Count value={waiting} />}
+                {item.notifications && unopened > 0 && <Count value={unopened} />}
               </NavLink>
             ))}
           </nav>
@@ -72,5 +73,19 @@ export function AppLayout({ items }: { items: NavItem[] }) {
         <Outlet />
       </main>
     </div>
+  )
+}
+
+/** The number beside a nav item. Two things want one now, so it is one
+ *  component rather than two copies of the same pill. */
+function Count({ value }: { value: number }) {
+  const { t } = useTranslation()
+  return (
+    <span
+      className="numeric ms-1.5 inline-flex min-w-5 items-center justify-center rounded-pill bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-fg"
+      aria-label={t('nav.unread', { count: value })}
+    >
+      {value}
+    </span>
   )
 }

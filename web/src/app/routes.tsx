@@ -25,6 +25,7 @@ import { JobsPage } from '@/features/client/JobsPage'
 import { MyDisputePage } from '@/features/client/MyDisputePage'
 import { MyDisputesPage } from '@/features/client/MyDisputesPage'
 import { NewRequestPage } from '@/features/client/NewRequestPage'
+import { NotificationsPage } from '@/features/client/NotificationsPage'
 import { RequestPage } from '@/features/client/RequestPage'
 import { RequestsPage } from '@/features/client/RequestsPage'
 import { ReviewPage } from '@/features/client/ReviewPage'
@@ -45,14 +46,13 @@ import { ProfilePage as ProProfilePage } from '@/features/pro/ProfilePage'
 import { LandingPage } from '@/features/public/LandingPage'
 import { ProviderProfilePage } from '@/features/public/ProviderProfilePage'
 import { NotFoundPage } from '@/features/public/NotFoundPage'
-import { NotBuilt } from '@/ui/NotBuilt'
 
 /**
  * Every route in docs/SCREENS.md, gated by role.
  *
- * Screens that are not built yet render a placeholder naming their id rather
- * than being absent — a 404 on a route the spec promises is indistinguishable
- * from a bug.
+ * All of them are built. `NotBuilt` — the placeholder that named a screen's id
+ * rather than 404ing on a route the spec promises — has no callers left and is
+ * gone with C6.
  */
 export function AppRoutes() {
   return (
@@ -92,7 +92,7 @@ export function AppRoutes() {
         <Route path="jobs/:id/dispute" element={<ClientDisputePage />} />
         <Route path="disputes" element={<MyDisputesPage />} />
         <Route path="disputes/:id" element={<MyDisputePage />} />
-        <Route path="notifications" element={<NotBuilt screen="C6" />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         {/* C7, M11 and D4 are one screen: the same row, three layouts around
             it. Only this file knows that, so no feature imports another. */}
         <Route path="account" element={<AccountPage />} />

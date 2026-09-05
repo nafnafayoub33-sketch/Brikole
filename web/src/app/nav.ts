@@ -7,7 +7,7 @@ export const CLIENT_NAV: NavItem[] = [
   // The client reaches C9 from a request, so the count rides here.
   { to: '/client/requests', labelKey: 'nav.myRequests', end: true, chats: true },
   { to: '/client/jobs', labelKey: 'nav.myJobsNav', end: true },
-  { to: '/client/notifications', labelKey: 'nav.notifications' },
+  { to: '/client/notifications', labelKey: 'nav.notifications', notifications: true },
   { to: '/client/account', labelKey: 'nav.account' },
 ]
 
