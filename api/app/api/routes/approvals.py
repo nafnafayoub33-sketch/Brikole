@@ -15,6 +15,7 @@ from app.schemas.common import Page
 from app.schemas.pro import ApplicationOut, RejectionIn
 from app.schemas.provider import ProviderCityOut, ProviderPhotoOut
 from app.services.approvals import ApprovalService
+from app.services.provider import availability_of
 
 router = APIRouter(
     prefix="/admin/approvals",
@@ -89,4 +90,5 @@ def _application(profile: ProviderProfile, db: DbSession) -> ApplicationOut:
         photos=[ProviderPhotoOut.model_validate(photo) for photo in profile.photos],
         rejection_reason=profile.rejection_reason,
         id_card_path=profile.id_card_url,
+        availability=availability_of(profile),
     )

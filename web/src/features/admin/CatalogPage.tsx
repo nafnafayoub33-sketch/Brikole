@@ -752,7 +752,12 @@ function Stat({
   return (
     <div>
       <dt className="text-xs text-fg-subtle">{label}</dt>
-      <dd dir="auto" className="mt-0.5 text-sm font-medium text-fg">
+      {/* `dir="auto"` reads the *first* strong character, so a value starting
+          with a digit makes the whole block LTR and drags it to the far side
+          of its label. It belongs on text a person wrote, and nowhere near a
+          number — the `numeric` span already handles the number's own
+          direction. */}
+      <dd dir={plain ? 'auto' : undefined} className="mt-0.5 text-sm font-medium text-fg">
         {plain ? value : <span className="numeric">{value}</span>}
       </dd>
     </div>

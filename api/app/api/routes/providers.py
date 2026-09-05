@@ -23,6 +23,7 @@ from app.schemas.provider import (
     ReviewAuthorOut,
     ReviewOut,
 )
+from app.services.provider import availability_of
 
 router = APIRouter(tags=["providers"])
 
@@ -66,6 +67,7 @@ def get_provider(provider_id: int, db: DbSession) -> ProviderProfileOut:
         member_since=row.created_at,
         rating_breakdown=ReviewRepository(db).breakdown(row.id),
         photos=[ProviderPhotoOut.model_validate(photo) for photo in row.photos],
+        availability=availability_of(row),
     )
 
 

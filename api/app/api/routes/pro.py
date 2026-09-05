@@ -7,11 +7,18 @@ from fastapi import APIRouter, Depends, status
 from app.core.enums import Role
 from app.core.errors import DomainError, ErrorCode
 from app.deps import CurrentUser, DbSession, require_roles
+from app.models.provider import ProviderProfile
 from app.repositories.reviews import ReviewRepository
 from app.schemas.catalog import TradeOut
-from app.schemas.pro import MyProviderProfileOut, ProviderApplicationIn
+from app.schemas.pro import (
+    AvailabilityIn,
+    MyProviderProfileOut,
+    PhotoIn,
+    ProfileEditIn,
+    ProviderApplicationIn,
+)
 from app.schemas.provider import ProviderCityOut, ProviderPhotoOut
-from app.services.provider import ProviderProfileService
+from app.services.provider import ProviderProfileService, availability_of
 
 router = APIRouter(
     prefix="/pro",
@@ -42,10 +49,47 @@ def submit_my_profile(
     return _mine(profile, db)
 
 
-def _mine(profile: object, db: DbSession) -> MyProviderProfileOut:
-    from app.models.provider import ProviderProfile
+@router.patch("/profile", response_model=MyProviderProfileOut)
+def edit_my_profile(
+    payload: ProfileEditIn, user: CurrentUser, db: DbSession
+) -> MyProviderProfileOut:
+    """M8. Everything a client reads about him, and nothing that decided
+    whether he got here: not the CIN, not the status.
 
-    assert isinstance(profile, ProviderProfile)
+    Changing his trades or his city moves his feed on the next request — the
+    feed is a query, not a stored list, so there is nothing to rebuild.
+    """
+    profile = ProviderProfileService(db).edit(user, payload)
+    return _mine(profile, db)
+
+
+@router.patch("/profile/availability", response_model=MyProviderProfileOut)
+def set_availability(
+    payload: AvailabilityIn, user: CurrentUser, db: DbSession
+) -> MyProviderProfileOut:
+    """Taking work, or away. A pause takes him out of search and leaves his
+    own feed alone — see `core/availability.py`."""
+    profile = ProviderProfileService(db).set_availability(user, payload)
+    return _mine(profile, db)
+
+
+@router.post(
+    "/profile/photos",
+    response_model=MyProviderProfileOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_photo(payload: PhotoIn, user: CurrentUser, db: DbSession) -> MyProviderProfileOut:
+    profile = ProviderProfileService(db).add_photo(user, payload.path)
+    return _mine(profile, db)
+
+
+@router.delete("/profile/photos/{photo_id}", response_model=MyProviderProfileOut)
+def remove_photo(photo_id: int, user: CurrentUser, db: DbSession) -> MyProviderProfileOut:
+    profile = ProviderProfileService(db).remove_photo(user, photo_id)
+    return _mine(profile, db)
+
+
+def _mine(profile: ProviderProfile, db: DbSession) -> MyProviderProfileOut:
     return MyProviderProfileOut(
         id=profile.id,
         full_name=profile.user.full_name,
@@ -66,4 +110,5 @@ def _mine(profile: object, db: DbSession) -> MyProviderProfileOut:
         photos=[ProviderPhotoOut.model_validate(photo) for photo in profile.photos],
         rejection_reason=profile.rejection_reason,
         id_card_path=profile.id_card_url,
+        availability=availability_of(profile),
     )

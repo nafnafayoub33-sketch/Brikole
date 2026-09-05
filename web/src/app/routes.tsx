@@ -39,6 +39,7 @@ import { ChatPage as ProChatPage } from '@/features/pro/ChatPage'
 import { OfferPage } from '@/features/pro/OfferPage'
 import { ProHome } from '@/features/pro/ProHome'
 import { StatusPage } from '@/features/pro/StatusPage'
+import { ProfilePage as ProProfilePage } from '@/features/pro/ProfilePage'
 import { LandingPage } from '@/features/public/LandingPage'
 import { ProviderProfilePage } from '@/features/public/ProviderProfilePage'
 import { NotFoundPage } from '@/features/public/NotFoundPage'
@@ -109,7 +110,7 @@ export function AppRoutes() {
         <Route path="offers" element={<MyOffersPage />} />
         <Route path="chats/:conversationId" element={<ProChatPage />} />
         <Route path="jobs" element={<ProJobsPage />} />
-        <Route path="profile" element={<NotBuilt screen="M8" />} />
+        <Route path="profile" element={<ProProfilePage />} />
         <Route path="credit" element={<CreditPage />} />
         <Route path="reviews" element={<NotBuilt screen="M10" />} />
         <Route path="disputes" element={<MyDisputesPage />} />

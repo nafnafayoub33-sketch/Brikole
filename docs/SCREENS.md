@@ -82,7 +82,12 @@ Trades & cities · Settings · Audit log.
 - **Contents:** photo, name, trades, city and radius, bio, portfolio gallery, rating
   with review count, jobs done, member since, reviews list
 - **Actions:** *Ask this m3allem* (pre-fills C1 with his trade)
-- **States:** loading · not found · suspended profile → 404, not a message
+- **States:** loading · not found · suspended profile → 404, not a message ·
+  paused tradesman → his page, with when he is back and no way to ask him
+- **A pause is not a 404.** Pending and suspended are not found because
+  confirming they exist tells a stranger something about somebody else. A man
+  on holiday is a different case: he exists, his page is worth reading, and it
+  says when he is back.
 - **Never shows:** phone number. Contact details appear only after an accepted offer.
 - → C1
 
@@ -316,8 +321,43 @@ with wet or dirty hands. Minimum touch target 52px.
 - **He is shown what the lead cost him** on each job, or that it was a free one.
 
 ### M8 · My profile — `/pro/profile`
-- Trades, city, radius, bio, portfolio, availability. Editing trades or city takes
-  effect on the feed immediately.
+His shop window: everything a client reads about him, and nothing that decided
+whether he got here.
+
+- **Contents:** availability first, then trades / city / radius / headline / bio /
+  years / starting price, then the portfolio, then his identity.
+- **Availability leads** because it is the only thing here with a consequence
+  today. A pause takes him out of search and out of the trade counts, and the
+  card says so — *and* says what it does not do: his own feed stays open, so a
+  good job can still bring him back early.
+- **A pause carries an optional return date and lifts itself.** A man on
+  holiday who keeps appearing keeps being asked and keeps not answering, which
+  costs him his rating; a switch he forgets to turn back on is the same problem
+  the other way round. Nothing derived is stored — whether he is available
+  *today* is computed from the two fields, so no job has to sweep anything.
+  Coming back early clears the date, or the page would say "back on the 12th"
+  beside a man who is already working.
+- **His identity is stated, not editable.** It was checked once at A2, and a
+  card he can swap afterwards makes that check mean nothing. The section is
+  present and says why rather than being absent and leaving him hunting for it.
+- **Editing is per section**, each with its own save. A tradesman fixing a typo
+  in his headline should not scroll past his portfolio to save it, and a failed
+  save should not put nine other fields at risk.
+- **Changing trades or city moves his feed on the next request** — the feed is a
+  query, not a stored list.
+- **The portfolio is add and remove**, up to ten. It is what turns a row in a
+  list into a phone call.
+- **While he is pending or rejected this screen sends him to M2**, where the
+  thing he edits is the application itself.
+- **States:** loading · error with retry · not approved yet · reading · editing a
+  section · pausing (with and without a date) · paused · portfolio full
+- → M2, P3
+
+**What a pause does elsewhere.** He leaves the P2 grid and the trade counts —
+counted the same way the grid is filtered, or the page says "12 plumbers" and
+shows nine. His P3 page still opens, because he exists and somebody holding his
+link deserves an answer: it shows when he is back and offers no way to ask him,
+on either button.
 
 ### M9 · Credit — `/pro/credit`
 - **Contents:** balance, free leads left, the transaction ledger (date, type,

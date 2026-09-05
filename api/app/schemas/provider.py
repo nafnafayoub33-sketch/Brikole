@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.core.enums import ProviderStatus
+from app.schemas.availability import AvailabilityOut
 from app.schemas.catalog import TradeOut
 from app.schemas.common import ApiModel
 
@@ -58,6 +59,10 @@ class ProviderProfileOut(ProviderCardOut):
 
     bio: str
     radius_km: int
+    #: Whether he is taking work, and when he is back if he is not. A grid
+    #: never shows a paused tradesman, but his own page opens — and telling a
+    #: client "back on the 20th" beats letting him write into the void.
+    availability: AvailabilityOut
     member_since: datetime
 
     #: How many reviews gave each score, 1 through 5. The bar chart on P3 reads

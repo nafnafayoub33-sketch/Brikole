@@ -25,12 +25,13 @@ class ProviderRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def _visible(self) -> Select[tuple[ProviderProfile]]:
-        """Only approved tradesmen on live accounts are ever listed.
+    def _reachable(self) -> Select[tuple[ProviderProfile]]:
+        """Approved, on a live account — somebody who exists to a stranger.
 
-        A pending application is not somebody you can hire, and a suspended
-        account must disappear from the grid the moment it is suspended rather
-        than at the next deploy.
+        Pending and suspended are *not found* rather than forbidden:
+        confirming a profile exists tells somebody something about somebody
+        else. A man on holiday is a different case — he exists, his page is
+        worth reading, and it says when he is back.
         """
         return (
             select(ProviderProfile)
@@ -39,6 +40,32 @@ class ProviderRepository:
                 ProviderProfile.status == ProviderStatus.APPROVED,
                 User.status == UserStatus.ACTIVE,
             )
+        )
+
+    def _visible(self) -> Select[tuple[ProviderProfile]]:
+        """Reachable, *and* taking work — what a search may return.
+
+        A man on holiday who keeps appearing in a grid keeps being asked and
+        keeps not answering, which costs him his rating and costs three
+        clients a day each. His own page still opens — see `_reachable`.
+        """
+        return self._reachable().where(self._taking_work())
+
+    @staticmethod
+    def _taking_work() -> ColumnElement[bool]:
+        """The SQL half of `core.availability.is_available`.
+
+        `UTC_DATE()`, never `CURDATE()`: these columns are UTC by contract, and
+        a database server set to Casablanca time would end a pause a few hours
+        early — only there, which is the worst kind of bug to find. The same
+        care the boost filter needs, for the same reason.
+        """
+        return or_(
+            ProviderProfile.accepting_work.is_(True),
+            and_(
+                ProviderProfile.back_on.is_not(None),
+                ProviderProfile.back_on <= func.utc_date(),
+            ),
         )
 
     def list_cards(
@@ -173,8 +200,10 @@ class ProviderRepository:
         )
 
     def get_card(self, provider_id: int) -> ProviderProfile | None:
+        """P3 reads this, so it is `_reachable` and not `_visible`: a paused
+        tradesman's page opens and says when he is back."""
         stmt = (
-            self._visible()
+            self._reachable()
             .where(ProviderProfile.id == provider_id)
             .options(
                 selectinload(ProviderProfile.user),

@@ -5,6 +5,11 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/data/client'
 import type { Page, Provider, ProviderProfile, Review } from '@/data/types'
 
+/** Named so M8 can invalidate them: a changed trade or a pause moves him in
+ *  and out of both. `PROVIDERS_KEY` is a prefix over every filter variant. */
+export const PROVIDERS_KEY = ['providers'] as const
+export const PROVIDER_KEY = ['provider'] as const
+
 export type ProviderSort = 'rating' | 'jobs' | 'price' | 'newest'
 
 interface ProviderQuery {
@@ -37,7 +42,7 @@ export function useProviders({
   if (cityId !== null) params.set('city_id', String(cityId))
 
   return useQuery({
-    queryKey: ['providers', { query, tradeId, cityId, sort, page, perPage }],
+    queryKey: [...PROVIDERS_KEY, { query, tradeId, cityId, sort, page, perPage }],
     queryFn: () => api<Page<Provider>>(`/providers?${params}`, { authenticated: false }),
     staleTime: 60_000,
     enabled,
@@ -47,7 +52,7 @@ export function useProviders({
 
 export function useProvider(providerId: number | null) {
   return useQuery({
-    queryKey: ['provider', providerId],
+    queryKey: [...PROVIDER_KEY, providerId],
     queryFn: () => api<ProviderProfile>(`/providers/${providerId}`, { authenticated: false }),
     enabled: providerId !== null,
     staleTime: 60_000,

@@ -30,7 +30,7 @@ class CatalogRepository:
     def list_trades_with_counts(
         self, *, city_id: int | None = None, only_active: bool = True
     ) -> list[tuple[Trade, int]]:
-        """Every trade with how many approved tradesmen work in it.
+        """Every trade with how many hireable tradesmen work in it.
 
         The count is the whole reason a visitor trusts the grid: "plumber" with
         nobody behind it is a dead end, and saying so beats letting them post a
@@ -48,6 +48,15 @@ class CatalogRepository:
                 ProviderProfile,
                 (ProviderProfile.id == provider_trades.c.provider_id)
                 & (ProviderProfile.status == ProviderStatus.APPROVED)
+                # Counted the same way the grid is filtered, or the page says
+                # "12 plumbers" and then shows nine.
+                & (
+                    ProviderProfile.accepting_work.is_(True)
+                    | (
+                        ProviderProfile.back_on.is_not(None)
+                        & (ProviderProfile.back_on <= func.utc_date())
+                    )
+                )
                 & (ProviderProfile.city_id == city_id if city_id is not None else True),
             )
             .group_by(Trade.id)

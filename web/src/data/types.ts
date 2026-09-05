@@ -105,10 +105,22 @@ export interface ProviderPhoto {
 }
 
 /** The card, plus what a decision needs a whole page for. */
+export interface Availability {
+  /** What he typed. */
+  accepting_work: boolean
+  /** When a pause lifts. Null on an open-ended one. */
+  back_on: string | null
+  /** Whether clients can find him *today*, status folded in. Computed by the
+   *  API, never stored — a stored answer goes stale the moment the date
+   *  passes, and a phone with the wrong clock must not disagree with search. */
+  is_available: boolean
+}
+
 export interface ProviderProfile extends Provider {
   bio: string
   radius_km: number
   member_since: string
+  availability: Availability
   /** How many reviews gave each score, 1 through 5. */
   rating_breakdown: Record<string, number>
   photos: ProviderPhoto[]

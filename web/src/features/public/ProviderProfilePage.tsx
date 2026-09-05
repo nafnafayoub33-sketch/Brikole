@@ -6,6 +6,7 @@ import { useProvider, useProviderReviews } from '@/data/providers'
 import { localisedName, type ProviderProfile, type Review, type Trade } from '@/data/types'
 import { formatDate, formatDirhams, formatRelative } from '@/lib/format'
 import type { Language } from '@/lib/i18n'
+import { Alert } from '@/ui/Alert'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { EmptyState } from '@/ui/EmptyState'
@@ -89,11 +90,25 @@ export function ProviderProfilePage() {
             <span className="text-sm text-fg-subtle">{t('provider.newHere')}</span>
           )}
 
-          <Link to="/client/requests/new" className="w-full">
-            <Button fullWidth size="lg">
-              {t('profile.contact')}
-            </Button>
-          </Link>
+          {/* A paused tradesman's page still opens — he exists, and the link
+              somebody has is worth following. What it must not do is invite a
+              request he will not answer, so the button says when he is back
+              instead of pretending. */}
+          {person.availability.is_available ? (
+            <Link to="/client/requests/new" className="w-full">
+              <Button fullWidth size="lg">
+                {t('profile.contact')}
+              </Button>
+            </Link>
+          ) : (
+            <Alert tone="warning" className="w-full">
+              {person.availability.back_on
+                ? t('profile.awayUntil', {
+                    when: formatDate(person.availability.back_on, language),
+                  })
+                : t('profile.away')}
+            </Alert>
+          )}
 
           <dl className="mt-2 w-full divide-y divide-border text-sm">
             <Fact label={t('profile.city')} value={localisedName(person.city, language)} />
@@ -280,11 +295,16 @@ function ServiceCard({
         ) : (
           <span className="text-xs font-medium text-primary">{t('provider.onQuote')}</span>
         )}
-        <Link to="/client/requests/new" className="shrink-0">
-          <Button size="sm" variant="secondary" className="whitespace-nowrap">
-            {t('profile.contactShort')}
-          </Button>
-        </Link>
+        {/* The card already has the person's availability — a paused
+            tradesman keeps his page but must not be asked from it, and one
+            gated button beside one that is not is worse than neither. */}
+        {person.availability.is_available && (
+          <Link to="/client/requests/new" className="shrink-0">
+            <Button size="sm" variant="secondary" className="whitespace-nowrap">
+              {t('profile.contactShort')}
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   )

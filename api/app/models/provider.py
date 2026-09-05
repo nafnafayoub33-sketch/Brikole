@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -83,6 +85,16 @@ class ProviderProfile(PkMixin, TimestampMixin, Base):
     rating_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     jobs_done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     jobs_cancelled: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    #: Whether he is taking work. What he typed, never a derived answer —
+    #: `core/availability.py` computes whether he is available *today* from
+    #: this and the date below, so nothing goes stale.
+    accepting_work: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, index=True
+    )
+    #: When a pause ends. Null on an open-ended one; a date that has passed
+    #: ends the pause whatever the switch above still says.
+    back_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     #: Paid placement runs until this moment and then simply stops — nothing
     #: sweeps it, because a boost that has run out is a comparison against the
