@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, Query, status
+
+from app.api.routes.providers import to_review
 from app.core.enums import Role
 from app.core.errors import DomainError, ErrorCode
 from app.deps import CurrentUser, DbSession, require_roles
 from app.models.provider import ProviderProfile
 from app.repositories.reviews import ReviewRepository
 from app.schemas.catalog import TradeOut
+from app.schemas.common import Page
 from app.schemas.pro import (
     AvailabilityIn,
     MyProviderProfileOut,
+    MyReviewsSummaryOut,
     PhotoIn,
     ProfileEditIn,
     ProviderApplicationIn,
+    ReplyIn,
 )
-from app.schemas.provider import ProviderCityOut, ProviderPhotoOut
+from app.schemas.provider import ProviderCityOut, ProviderPhotoOut, ReviewOut
+from app.services.pro_reviews import ProviderReviewsService
 from app.services.provider import ProviderProfileService, availability_of
 
 router = APIRouter(
@@ -87,6 +94,48 @@ def add_photo(payload: PhotoIn, user: CurrentUser, db: DbSession) -> MyProviderP
 def remove_photo(photo_id: int, user: CurrentUser, db: DbSession) -> MyProviderProfileOut:
     profile = ProviderProfileService(db).remove_photo(user, photo_id)
     return _mine(profile, db)
+
+
+# -- M10 ---------------------------------------------------------------------
+
+
+@router.get("/reviews/summary", response_model=MyReviewsSummaryOut)
+def my_reviews_summary(user: CurrentUser, db: DbSession) -> MyReviewsSummaryOut:
+    """Declared before `/reviews` so `summary` is never read as a page number.
+
+    Its own endpoint rather than a field on every page: the numbers do not
+    change as he pages, so this way they are fetched once and stay put while he
+    reads.
+    """
+    profile, breakdown, unanswered = ProviderReviewsService(db).summary(user)
+    return MyReviewsSummaryOut(
+        rating_avg=profile.rating_avg,
+        rating_count=profile.rating_count,
+        breakdown=breakdown,
+        unanswered=unanswered,
+    )
+
+
+@router.get("/reviews", response_model=Page[ReviewOut])
+def my_reviews(
+    user: CurrentUser,
+    db: DbSession,
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> Page[ReviewOut]:
+    """The same shape P3 shows the public, because it is the same set."""
+    rows, total = ProviderReviewsService(db).page(user, page=page, per_page=per_page)
+    return Page[ReviewOut](
+        items=[to_review(row) for row in rows], total=total, page=page, per_page=per_page
+    )
+
+
+@router.post("/reviews/{review_id}/reply", response_model=ReviewOut)
+def reply_to_review(
+    review_id: int, payload: ReplyIn, user: CurrentUser, db: DbSession
+) -> ReviewOut:
+    """His one answer. A second attempt is a 409, not a rewrite."""
+    return to_review(ProviderReviewsService(db).reply(user, review_id, payload.reply))
 
 
 def _mine(profile: ProviderProfile, db: DbSession) -> MyProviderProfileOut:

@@ -435,7 +435,21 @@ on either button.
   on it.
 
 ### M10 · Reviews — `/pro/reviews`
-- Rating breakdown and the reviews themselves. He may reply once to each.
+- The breakdown and the reviews, in the same shape P3 shows the public. Two
+  versions of a man's reputation is one version too many — so `RatingBreakdown`
+  lives in `src/ui` and both screens draw it, and the review list is the same
+  set. Which also means a review **D3 has hidden is not here**: the platform
+  stopped standing behind it, and putting it back in front of him only sends him
+  to argue with a client about something nobody can read.
+- The header leads on how many are **unanswered**, not how many exist. "Three to
+  answer" is work; "forty-seven reviews" is a fact. That number is what makes the
+  screen a queue.
+- **He may reply once, and the once is the rule.** A reply he can rewrite after
+  the client has read it is a moving target, not an answer — the client sees an
+  apology, comes back a week later and finds an accusation. So a second attempt
+  is a 409, and the warning is shown *before* he writes rather than after he
+  presses: nobody should discover the rule by hitting it.
+- Somebody else's review id is a 404, not a 403 — the id space is guessable.
 
 ### M11 · Account — `/pro/account`
 - The same screen as C7, wearing the tradesman's layout, plus the line pointing

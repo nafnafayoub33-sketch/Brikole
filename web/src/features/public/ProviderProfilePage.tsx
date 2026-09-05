@@ -14,6 +14,7 @@ import { ErrorState } from '@/ui/ErrorState'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
 import { ReportButton } from '@/ui/ReportButton'
 import { Skeleton } from '@/ui/Skeleton'
+import { RatingBreakdown } from '@/ui/RatingBreakdown'
 import { Stars } from '@/ui/Stars'
 import { cn } from '@/ui/cn'
 
@@ -177,7 +178,8 @@ export function ProviderProfilePage() {
           </div>
 
           {person.rating_count > 0 && (
-            <Breakdown
+            <RatingBreakdown
+              className="mt-5"
               breakdown={person.rating_breakdown}
               total={person.rating_count}
               average={person.rating_avg}
@@ -306,44 +308,6 @@ function ServiceCard({
           </Link>
         )}
       </div>
-    </div>
-  )
-}
-
-function Breakdown({
-  breakdown,
-  total,
-  average,
-}: {
-  breakdown: Record<string, number>
-  total: number
-  average: number
-}) {
-  return (
-    <div className="mt-5 flex flex-wrap items-center gap-x-10 gap-y-5 rounded-lg border border-border bg-surface-2 p-5">
-      <div className="text-center">
-        <p className="numeric text-4xl font-bold text-fg">{average.toFixed(1)}</p>
-        <Stars value={average} className="mt-1" />
-      </div>
-
-      <ul className="min-w-56 flex-1 space-y-1.5">
-        {[5, 4, 3, 2, 1].map((score) => {
-          const count = breakdown[String(score)] ?? 0
-          const share = total === 0 ? 0 : Math.round((count / total) * 100)
-          return (
-            <li key={score} className="flex items-center gap-3 text-xs">
-              <span className="numeric w-3 text-fg-muted">{score}</span>
-              <span className="h-2 flex-1 overflow-hidden rounded-pill bg-surface-inset">
-                <span
-                  className="block h-full rounded-pill bg-star"
-                  style={{ width: `${share}%` }}
-                />
-              </span>
-              <span className="numeric w-8 text-end text-fg-subtle">{count}</span>
-            </li>
-          )
-        })}
-      </ul>
     </div>
   )
 }

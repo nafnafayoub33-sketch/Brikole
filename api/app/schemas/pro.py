@@ -14,6 +14,8 @@ from app.core.provider_application import (
     MAX_YEARS_EXPERIENCE,
     MIN_TRADES,
 )
+from app.core.review_reply import MAX_REPLY
+from app.schemas.common import ApiModel
 from app.schemas.provider import ProviderProfileOut
 
 
@@ -93,3 +95,20 @@ class ApplicationOut(MyProviderProfileOut):
 
 class RejectionIn(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
+
+
+class MyReviewsSummaryOut(ApiModel):
+    """M10's header: his numbers, and the one that is a thing to do."""
+
+    rating_avg: float
+    rating_count: int
+    #: All five keys, zeros included — a bar chart missing its empty bars reads
+    #: as a chart with different categories.
+    breakdown: dict[int, int]
+    #: How many are still waiting on an answer. This is what makes the screen a
+    #: queue rather than a wall.
+    unanswered: int
+
+
+class ReplyIn(BaseModel):
+    reply: str = Field(min_length=1, max_length=MAX_REPLY)
