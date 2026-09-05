@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
+import { useSession } from '@/data/auth'
 import { useUnreadChats } from '@/data/chat'
-import { useUnreadNotifications } from '@/data/notifications'
+import { NotificationsBell } from '@/ui/NotificationsBell'
 import { cn } from '@/ui/cn'
 import { LanguageSelect } from '@/ui/LanguageSelect'
 import { ThemeToggle } from '@/ui/ThemeToggle'
@@ -15,9 +16,6 @@ export interface NavItem {
   /** Marks the item that owns the chats, so it can carry the unread count.
    *  Only one item per role has it, and the roles without one never ask. */
   chats?: boolean
-  /** Same, for C6. Only the client has an inbox screen today, so only his
-   *  shell asks for the number. */
-  notifications?: boolean
 }
 
 /**
@@ -30,8 +28,11 @@ export function AppLayout({ items }: { items: NavItem[] }) {
   const unread = useUnreadChats(items.some((item) => item.chats))
   const waiting = unread.data?.count ?? 0
 
-  const inbox = useUnreadNotifications(items.some((item) => item.notifications))
-  const unopened = inbox.data?.count ?? 0
+  // `/client` or `/pro`, which is what decides where a notification links to.
+  // Staff have no notifications written for them, so they get no bell.
+  const { data: user } = useSession()
+  const area = user ? `/${user.home_path.split('/')[1] ?? ''}` : ''
+  const hasInbox = area === '/client' || area === '/pro'
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -56,12 +57,12 @@ export function AppLayout({ items }: { items: NavItem[] }) {
               >
                 {t(item.labelKey)}
                 {item.chats && waiting > 0 && <Count value={waiting} />}
-                {item.notifications && unopened > 0 && <Count value={unopened} />}
               </NavLink>
             ))}
           </nav>
 
           <div className="ms-auto flex items-center gap-2">
+            {hasInbox && <NotificationsBell area={area} />}
             <ThemeToggle className="hidden sm:inline-flex" />
             <LanguageSelect className="hidden md:inline-flex" />
             <ProfileMenu />
@@ -76,8 +77,7 @@ export function AppLayout({ items }: { items: NavItem[] }) {
   )
 }
 
-/** The number beside a nav item. Two things want one now, so it is one
- *  component rather than two copies of the same pill. */
+/** The number beside a nav item. */
 function Count({ value }: { value: number }) {
   const { t } = useTranslation()
   return (

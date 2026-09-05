@@ -2,12 +2,13 @@ import type { NavItem } from '@/app/layouts/AppLayout'
 
 /** The menus from docs/SCREENS.md, one list per role. */
 
+// No notifications item: the bell in the header carries them, from every
+// screen, without taking a slot in a menu that is already five wide.
 export const CLIENT_NAV: NavItem[] = [
   { to: '/client/requests/new', labelKey: 'nav.newRequest' },
   // The client reaches C9 from a request, so the count rides here.
   { to: '/client/requests', labelKey: 'nav.myRequests', end: true, chats: true },
   { to: '/client/jobs', labelKey: 'nav.myJobsNav', end: true },
-  { to: '/client/notifications', labelKey: 'nav.notifications', notifications: true },
   { to: '/client/account', labelKey: 'nav.account' },
 ]
 

@@ -8,9 +8,8 @@ import {
   useMarkNotificationRead,
   useNotifications,
   type Notification,
-  type NotificationKind,
 } from '@/data/notifications'
-import { formatDirhams, formatRelative, isolate } from '@/lib/format'
+import { formatRelative } from '@/lib/format'
 import type { Language } from '@/lib/i18n'
 import { Button } from '@/ui/Button'
 import { EmptyState } from '@/ui/EmptyState'
@@ -18,50 +17,7 @@ import { ErrorState } from '@/ui/ErrorState'
 import { Pager } from '@/ui/Pager'
 import { Skeleton } from '@/ui/Skeleton'
 import { cn } from '@/ui/cn'
-
-/** One key per kind. The API sends the kind; the wording is ours, in three
- *  languages, and the payload fills its blanks. */
-const LINES: Record<NotificationKind, string> = {
-  offer_received: 'notify.offerReceived',
-  offer_accepted: 'notify.offerAccepted',
-  offer_rejected: 'notify.offerRejected',
-  job_started: 'notify.jobStarted',
-  job_done: 'notify.jobDone',
-  review_received: 'notify.reviewReceived',
-  provider_approved: 'notify.providerApproved',
-  provider_rejected: 'notify.providerRejected',
-  topup_approved: 'notify.topupApproved',
-  topup_rejected: 'notify.topupRejected',
-  dispute_update: 'notify.disputeUpdate',
-  credit_low: 'notify.creditLow',
-}
-
-function number(payload: Record<string, unknown>, key: string): number | null {
-  const value = payload[key]
-  return typeof value === 'number' ? value : null
-}
-
-/** Where a notification points. `null` when its payload has lost the id it
- *  needs — the line still reads, it just does not go anywhere. */
-function destination(notification: Notification): string | null {
-  const { payload } = notification
-
-  const request = number(payload, 'request_id')
-  const job = number(payload, 'job_id')
-  const dispute = number(payload, 'dispute_id')
-
-  switch (notification.kind) {
-    case 'offer_received':
-      return request === null ? null : `/client/requests/${request}`
-    case 'job_started':
-    case 'job_done':
-      return job === null ? null : `/client/jobs/${job}`
-    case 'dispute_update':
-      return dispute === null ? null : `/client/disputes/${dispute}`
-    default:
-      return null
-  }
-}
+import { destination, notificationLine } from '@/ui/notificationLines'
 
 /**
  * C6 — what happened while he was not looking.
@@ -92,7 +48,7 @@ export function NotificationsPage() {
 
   const open = (notification: Notification) => {
     if (notification.read_at === null) markRead.mutate({ id: notification.id })
-    const to = destination(notification)
+    const to = destination(notification, '/client')
     if (to) navigate(to)
   }
 
@@ -155,7 +111,6 @@ function Row({
 }) {
   const { t } = useTranslation()
   const unread = notification.read_at === null
-  const price = number(notification.payload, 'price_centimes')
 
   return (
     <button
@@ -180,17 +135,8 @@ function Row({
       />
 
       <span className="min-w-0 flex-1">
-        {/* No `dir="auto"` here. The line is a *translated sentence*, so it
-            runs in the interface's direction — and `auto` reads the first
-            strong character, which is an interpolated Latin name, so it would
-            flip the whole Arabic line and scatter the pieces. The name and the
-            price are Latin runs inside it, and `isolate` is what keeps each of
-            them together where it belongs. */}
         <span className={cn('block text-sm', unread ? 'font-semibold text-fg' : 'text-fg-muted')}>
-          {t(LINES[notification.kind], {
-            name: isolate(String(notification.payload.provider_name ?? '')),
-            price: price === null ? '' : isolate(formatDirhams(price, language)),
-          })}
+          {notificationLine(t, notification, language)}
         </span>
         <span className="numeric mt-1 block text-xs text-fg-subtle">
           {formatRelative(notification.created_at, language)}

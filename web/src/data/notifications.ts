@@ -39,13 +39,16 @@ export interface Notification {
   read_at: string | null
 }
 
-export function useNotifications(page: number) {
+/** `enabled` is for the bell: closed, it needs the number and not the rows —
+ *  which is why the number is its own endpoint. */
+export function useNotifications(page: number, enabled = true) {
   return useQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'page', page],
     queryFn: () =>
       api<Page<Notification>>(
         `/notifications?page=${page}&per_page=${NOTIFICATIONS_PER_PAGE}`,
       ),
+    enabled,
     staleTime: 15_000,
   })
 }

@@ -238,7 +238,6 @@ needs confirming, there is news on his dispute. Read/unread, and mark all read.
 - **Opening one marks it read; the list marks nothing.** A glance at the bell
   should not erase what he has not looked at. Re-reading one keeps the first
   time — re-stamping it would move a thing that already happened.
-- The count rides on the nav item, so he sees it from any screen.
 - Notified about the other side's move, never his own: starting and finishing a
   job are the tradesman's, so the client is the one told. An internal note on a
   dispute notifies nobody — telling a client something was said that he cannot
@@ -249,6 +248,22 @@ needs confirming, there is news on his dispute. Read/unread, and mark all read.
 `maintenance_mode` was before S4. Notifying about an expiry that never happens
 would be worse than the gap. Making offers actually expire touches C3, M6 and the
 accept path, so it is its own piece of work rather than a corner of this one.
+
+**The bell** carries it in the header rather than as a nav item, because a
+notification is not a place you go — it is something that arrived while you were
+somewhere else, and it has to be visible from every screen without taking a slot
+in a menu that is already five wide. Closed it is one number; open it is the six
+most recent, each doing exactly what C6 does. "See all" is only there where a
+full page exists, because a link that 404s is worse than no link.
+
+A **tradesman gets the bell too**: dispute updates are written for both sides,
+and until this he had rows nobody could reach. His lines link to `/pro/disputes`;
+the kinds with no page on his side stay plain text rather than becoming dead
+links. Staff have none written for them, so they have no bell.
+
+The line and its destination live in `src/ui/notificationLines.ts` — two things
+render them now, and the fifth copy of a map like that is how a raw
+`notify.jobDone` ships in a screenshot.
 
 **Push notifications** are Phase 4 alongside SMS: this is an in-app inbox, and
 nothing here reaches a phone that is not looking at the site.
