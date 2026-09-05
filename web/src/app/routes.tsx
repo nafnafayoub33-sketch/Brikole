@@ -12,6 +12,7 @@ import { ApprovalsPage } from '@/features/admin/ApprovalsPage'
 import { AuditPage } from '@/features/admin/AuditPage'
 import { DashboardPage } from '@/features/admin/DashboardPage'
 import { FinancePage } from '@/features/admin/FinancePage'
+import { RequestsPage as AdminRequestsPage } from '@/features/admin/RequestsPage'
 import { SettingsPage } from '@/features/admin/SettingsPage'
 import { UsersPage } from '@/features/admin/UsersPage'
 import { ChatPage as ClientChatPage } from '@/features/client/ChatPage'
@@ -142,7 +143,7 @@ export function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="users" element={<UsersPage />} />
-        <Route path="requests" element={<NotBuilt screen="A4" />} />
+        <Route path="requests" element={<AdminRequestsPage />} />
         <Route path="finance" element={<FinancePage />} />
         <Route path="catalog" element={<NotBuilt screen="A6" />} />
         <Route path="settings" element={<SettingsPage />} />

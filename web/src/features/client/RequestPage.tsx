@@ -13,7 +13,7 @@ import {
   type ServiceRequest,
 } from '@/data/requests'
 import { localisedName } from '@/data/types'
-import { StatusBadge } from '@/features/client/RequestsPage'
+import { RequestStatusBadge as StatusBadge } from '@/ui/RequestStatusBadge'
 import { formatBudget, formatDate, formatDirhams, formatRelative } from '@/lib/format'
 import type { Language } from '@/lib/i18n'
 import { Alert } from '@/ui/Alert'
@@ -27,6 +27,7 @@ import { Skeleton } from '@/ui/Skeleton'
 import { Stars } from '@/ui/Stars'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
 import { cn } from '@/ui/cn'
+import { URGENCY_KEYS } from '@/ui/urgencyLabels'
 
 /**
  * C3 — the request as it was published, and what it drew.
@@ -38,12 +39,6 @@ import { cn } from '@/ui/cn'
 type Sort = 'price' | 'rating' | 'soonest'
 
 const SORTS: Sort[] = ['price', 'rating', 'soonest']
-
-const URGENCY_KEYS = {
-  today: 'request.urgencyToday',
-  this_week: 'request.urgencyWeek',
-  flexible: 'request.urgencyFlexible',
-} as const
 
 export function RequestPage() {
   const { t, i18n } = useTranslation()

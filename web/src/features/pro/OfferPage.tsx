@@ -22,6 +22,7 @@ import { Field } from '@/ui/Field'
 import { OutOfCredit } from '@/ui/OutOfCredit'
 import { Skeleton } from '@/ui/Skeleton'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
+import { URGENCY_KEYS } from '@/ui/urgencyLabels'
 
 /**
  * M5 — the request in full, and the price he puts on it.
@@ -31,12 +32,6 @@ import { TradeIcon } from '@/ui/illustrations/TradeIcon'
  * types a number, is exactly what the lead will cost him and exactly when —
  * only if the client accepts.
  */
-
-const URGENCY_KEYS = {
-  today: 'request.urgencyToday',
-  this_week: 'request.urgencyWeek',
-  flexible: 'request.urgencyFlexible',
-} as const
 
 export function OfferPage() {
   const { t, i18n } = useTranslation()

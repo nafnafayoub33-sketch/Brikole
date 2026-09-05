@@ -29,6 +29,7 @@ class AuditAction:
     USER_REACTIVATED = "user.reactivated"
     USER_ROLE_CHANGED = "user.role_changed"
     STAFF_CREATED = "staff.created"
+    REQUEST_CANCELLED = "request.cancelled"
 
 
 def record(

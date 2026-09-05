@@ -607,8 +607,43 @@ What it refuses, and why:
   gets there first.
 
 ### A4 · Requests and jobs — `/admin/requests`
-- Read-only browser with filters, for support questions. Cancelling a request from
-  here is possible and audited.
+Read-only browser for support questions. Every question it answers has the same
+shape: somebody is on the phone about a request, find it and say what happened
+to it.
+
+- **Contents:** a filtered list scrolling inside itself beside a sticky detail,
+  with a pager. Rows carry the id, the title, the client, the city, the age and
+  the offer count — what a support agent scans by.
+- **One box takes whatever the caller has.** A request id, a title, the client's
+  name, or his phone spoken the way people speak it: `0612…` finds `+212612…`.
+  A bare number is tried as *both* an id and a phone rather than a mode switch
+  nobody would find.
+- **Filters:** status · city · trade. Changing any of them resets to page 1.
+- **The detail is the whole story at once** — the request, the client with his
+  phone, every offer with what it cost, the job with its dates, and the dispute
+  if there is one. Somebody is waiting on the line; clicking through four
+  panels is the same as not knowing.
+- **The client's phone is on this screen and no other admin screen.** A4 exists
+  because a person is *on* the phone, and an admin who has to leave to find the
+  number reads it out wrong.
+- **Nothing is omitted when it is absent.** No offers, no job, no dispute come
+  back as an empty list and nulls, and the screen says "no tradesman answered" —
+  which is an answer support can read out.
+- **Cancelling stops at `open`.** Once a request is assigned there is a
+  tradesman who may be on his way, a fee already charged, and possibly a refund
+  owed — that is a dispute, and disputes already have the machinery. A second
+  cancel path here would be a second set of rules about the same moment.
+- **When it cannot be cancelled the panel says why** rather than disappearing:
+  an admin who finds no button concludes the screen is broken, and "this one has
+  a tradesman on it, open a dispute" is what he needed to hear.
+- **A reason is mandatory**, and the cancel confirms first. Somebody reads that
+  reason in three months wondering why a client's request vanished.
+- Every cancellation writes an `audit_log` row with the status before and the
+  reason after.
+- **States:** loading · empty ("no requests" with a way back) · error with retry ·
+  nothing selected · selected · cancel confirm · cancel refused because it is no
+  longer open
+- → A3, D1
 
 ### A5 · Finance — `/admin/finance` ⭐
 - **Tabs:** top-up requests (approve/reject with the receipt visible), the credit

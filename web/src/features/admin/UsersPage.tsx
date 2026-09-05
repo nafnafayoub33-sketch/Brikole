@@ -26,6 +26,7 @@ import { ConfirmButton } from '@/ui/ConfirmButton'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
 import { Field } from '@/ui/Field'
+import { Pager } from '@/ui/Pager'
 import { Skeleton } from '@/ui/Skeleton'
 import { cn } from '@/ui/cn'
 import { REASON_KEYS, STATUS_KEYS, STATUS_TONES } from '@/ui/disputeLabels'
@@ -164,49 +165,6 @@ export function UsersPage() {
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-function Pager({
-  page,
-  pages,
-  language,
-  onChange,
-}: {
-  page: number
-  pages: number
-  language: Language
-  onChange: (next: number) => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
-      >
-        {t('users.previous')}
-      </Button>
-
-      <span className="numeric text-xs text-fg-subtle">
-        {t('users.pageOf', {
-          page: formatCount(page, language),
-          pages: formatCount(pages, language),
-        })}
-      </span>
-
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={page >= pages}
-        onClick={() => onChange(page + 1)}
-      >
-        {t('users.next')}
-      </Button>
     </div>
   )
 }

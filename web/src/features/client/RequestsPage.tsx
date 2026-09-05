@@ -15,9 +15,9 @@ import { Badge } from '@/ui/Badge'
 import { Button } from '@/ui/Button'
 import { EmptyState } from '@/ui/EmptyState'
 import { ErrorState } from '@/ui/ErrorState'
+import { RequestStatusBadge as StatusBadge } from '@/ui/RequestStatusBadge'
 import { Skeleton } from '@/ui/Skeleton'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
-import { cn } from '@/ui/cn'
 
 /**
  * C2 — his requests, grouped the way he thinks about them.
@@ -199,27 +199,3 @@ function OfferCount({ count, status }: { count: number; status: RequestStatus })
   )
 }
 
-const STATUS_TONES = {
-  open: 'brand',
-  assigned: 'success',
-  done: 'neutral',
-  cancelled: 'neutral',
-  expired: 'neutral',
-} as const
-
-const STATUS_KEYS: Record<RequestStatus, string> = {
-  open: 'requests.statusOpen',
-  assigned: 'requests.statusAssigned',
-  done: 'requests.statusDone',
-  cancelled: 'requests.statusCancelled',
-  expired: 'requests.statusExpired',
-}
-
-export function StatusBadge({ status, className }: { status: RequestStatus; className?: string }) {
-  const { t } = useTranslation()
-  return (
-    <Badge tone={STATUS_TONES[status]} className={cn('shrink-0', className)}>
-      {t(STATUS_KEYS[status])}
-    </Badge>
-  )
-}

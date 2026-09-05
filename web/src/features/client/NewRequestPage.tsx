@@ -24,6 +24,7 @@ import { TradeIcon } from '@/ui/illustrations/TradeIcon'
 import { PhotoGallery, type PickedPhoto } from '@/ui/PhotoInput'
 import { Skeleton } from '@/ui/Skeleton'
 import { cn } from '@/ui/cn'
+import { URGENCY_KEYS } from '@/ui/urgencyLabels'
 
 const STEPS = 4
 const MAX_PHOTOS = 6
@@ -405,11 +406,7 @@ export function NewRequestPage({ editing = false }: { editing?: boolean } = {}) 
 }
 
 function urgencyKey(urgency: Urgency): string {
-  return {
-    today: 'request.urgencyToday',
-    this_week: 'request.urgencyWeek',
-    flexible: 'request.urgencyFlexible',
-  }[urgency]
+  return URGENCY_KEYS[urgency]
 }
 
 function toCentimes(value: string): number | null {

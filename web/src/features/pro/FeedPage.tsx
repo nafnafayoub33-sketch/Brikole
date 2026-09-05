@@ -18,6 +18,7 @@ import { OutOfCredit } from '@/ui/OutOfCredit'
 import { Skeleton } from '@/ui/Skeleton'
 import { TradeIcon } from '@/ui/illustrations/TradeIcon'
 import { cn } from '@/ui/cn'
+import { URGENCY_KEYS } from '@/ui/urgencyLabels'
 
 /**
  * M4 — the requests he could take.
@@ -29,12 +30,6 @@ import { cn } from '@/ui/cn'
  */
 
 const URGENCIES: Urgency[] = ['today', 'this_week', 'flexible']
-
-const URGENCY_KEYS = {
-  today: 'request.urgencyToday',
-  this_week: 'request.urgencyWeek',
-  flexible: 'request.urgencyFlexible',
-} as const
 
 export function FeedPage() {
   const { t, i18n } = useTranslation()
