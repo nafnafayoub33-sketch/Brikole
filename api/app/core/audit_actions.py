@@ -20,6 +20,7 @@ class AuditAction:
     USER_SUSPENDED = "user.suspended"
     USER_REACTIVATED = "user.reactivated"
     USER_ROLE_CHANGED = "user.role_changed"
+    PASSWORD_RESET = "user.password_reset"
     STAFF_CREATED = "staff.created"
     REQUEST_CANCELLED = "request.cancelled"
     TRADE_CREATED = "trade.created"

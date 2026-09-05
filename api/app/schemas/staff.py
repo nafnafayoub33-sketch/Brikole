@@ -128,6 +128,17 @@ class RoleIn(BaseModel):
     role: Role
 
 
+class PasswordResetOut(ApiModel):
+    """P6 — the only time a password crosses the wire in plaintext.
+
+    Deliberately not folded into `UserDetailOut`: a response the screen caches
+    and re-renders is the wrong place for a credential that is meant to be read
+    aloud once and forgotten.
+    """
+
+    password: str
+
+
 class NewStaffIn(BaseModel):
     phone: str
     full_name: str = Field(min_length=1, max_length=120)

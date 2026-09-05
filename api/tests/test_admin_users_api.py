@@ -6,9 +6,13 @@ here is what it refuses to do.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from app.core.enums import ProviderStatus, Role, UserStatus
+from app.core.security import MAX_FAILED_ATTEMPTS, validate_password
+from app.models.base import utcnow
 from app.models.system import AuditLog
 from app.models.user import User
 from tests.test_auth_api import auth, make_user, token_for
@@ -398,6 +402,138 @@ class TestCreatingStaff:
         )
         assert response.status_code == 409
         assert response.json()["code"] == "phone_taken"
+
+
+# -- passwords --------------------------------------------------------------
+
+
+class TestResettingAPassword:
+    """P6 promises "an admin resets it". This is the admin resetting it."""
+
+    def reset(self, client, api_prefix, stage, user_id: int):
+        return client.post(
+            f"{api_prefix}/admin/users/{user_id}/reset-password",
+            headers=auth(stage["token"]),
+        )
+
+    def test_the_password_it_returns_actually_signs_in(self, client, api_prefix, stage):
+        response = self.reset(client, api_prefix, stage, stage["client"].id)
+        assert response.status_code == 200
+
+        password = response.json()["password"]
+        signed_in = client.post(
+            f"{api_prefix}/auth/login", json={"phone": "0611111111", "password": password}
+        )
+        assert signed_in.status_code == 200
+
+    def test_it_passes_the_platforms_own_password_policy(self, client, api_prefix, stage):
+        """Not a detail: `hash_password` runs `validate_password`, so a
+        generator that can emit a weak one is a reset that fails on the call."""
+        password = self.reset(client, api_prefix, stage, stage["client"].id).json()[
+            "password"
+        ]
+        assert validate_password(password) == password
+
+    def test_the_old_password_stops_working(self, client, api_prefix, stage):
+        self.reset(client, api_prefix, stage, stage["client"].id)
+
+        refused = client.post(
+            f"{api_prefix}/auth/login",
+            json={"phone": "0611111111", "password": "khedma2026"},
+        )
+        assert refused.status_code == 401
+
+    def test_it_lifts_the_lockout_that_sent_him_here(self, client, api_prefix, db, stage):
+        """Somebody who forgot his password has usually just proved it five
+        times, so he is locked out. A new password that still answers "too many
+        attempts" is a second phone call."""
+        target = stage["client"]
+        target.failed_login_attempts = MAX_FAILED_ATTEMPTS
+        target.locked_until = utcnow() + timedelta(minutes=15)
+        db.commit()
+
+        password = self.reset(client, api_prefix, stage, target.id).json()["password"]
+
+        signed_in = client.post(
+            f"{api_prefix}/auth/login", json={"phone": "0611111111", "password": password}
+        )
+        assert signed_in.status_code == 200
+
+        db.refresh(target)
+        assert target.failed_login_attempts == 0
+        assert target.locked_until is None
+
+    def test_he_can_then_choose_his_own(self, client, api_prefix, stage):
+        """The temporary one is meant to be replaced, so the door out of it has
+        to be open — the whole reset is half a product without this."""
+        password = self.reset(client, api_prefix, stage, stage["client"].id).json()[
+            "password"
+        ]
+        token = token_for(client, api_prefix, "0611111111", password)
+
+        changed = client.post(
+            f"{api_prefix}/auth/change-password",
+            json={"current_password": password, "new_password": "sadaka2026"},
+            headers=auth(token),
+        )
+        assert changed.status_code == 204
+        assert token_for(client, api_prefix, "0611111111", "sadaka2026")
+
+    def test_two_resets_do_not_give_the_same_password(self, client, api_prefix, stage):
+        first = self.reset(client, api_prefix, stage, stage["client"].id).json()["password"]
+        second = self.reset(client, api_prefix, stage, stage["client"].id).json()["password"]
+        assert first != second
+
+    def test_it_is_audited(self, client, api_prefix, db, stage):
+        self.reset(client, api_prefix, stage, stage["client"].id)
+
+        row = audited(db, "user.password_reset")
+        assert row is not None
+        assert row.actor_id == stage["admin"].id
+        assert row.target_id == stage["client"].id
+
+    def test_the_audit_row_does_not_hold_the_password(self, client, api_prefix, db, stage):
+        """An audit log holding password material is a second copy of the thing
+        the hashing was for."""
+        password = self.reset(client, api_prefix, stage, stage["client"].id).json()[
+            "password"
+        ]
+
+        row = audited(db, "user.password_reset")
+        assert row is not None
+        assert password not in str(row.before) + str(row.after) + str(row.note)
+
+    def test_resetting_his_own_is_refused(self, client, api_prefix, stage):
+        """He has a password he can read; what he would get here is one he has
+        to read too. And A3 hides every action on his own row."""
+        response = self.reset(client, api_prefix, stage, stage["admin"].id)
+        assert response.status_code == 409
+        assert response.json()["code"] == "self_action_refused"
+
+    def test_resetting_a_suspended_account_is_refused(self, client, api_prefix, db, stage):
+        """Five minutes spelling a code down the phone, and the person types it
+        and reads "your account is suspended". That conversation comes first."""
+        stage["client"].status = UserStatus.SUSPENDED
+        db.commit()
+
+        response = self.reset(client, api_prefix, stage, stage["client"].id)
+        assert response.status_code == 409
+
+    def test_a_deleted_account_is_a_404(self, client, api_prefix, db, stage):
+        stage["client"].status = UserStatus.DELETED
+        db.commit()
+
+        assert self.reset(client, api_prefix, stage, stage["client"].id).status_code == 404
+
+    def test_a_moderator_may_not_hand_out_a_password(self, client, api_prefix, stage):
+        """The one endpoint on the platform that answers with a live
+        credential, so it is worth asserting on its own rather than trusting
+        the router's dependency to stay where it is."""
+        token = auth(token_for(client, api_prefix, "0655000001"))
+        response = client.post(
+            f"{api_prefix}/admin/users/{stage['client'].id}/reset-password", headers=token
+        )
+        assert response.status_code == 403
 
 
 # -- who may be here at all -------------------------------------------------

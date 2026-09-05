@@ -7,6 +7,7 @@ import {
   USERS_PER_PAGE,
   useChangeRole,
   useReactivateUser,
+  useResetPassword,
   useSuspendUser,
   useUser,
   useUsers,
@@ -462,13 +463,17 @@ function Actions({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
   const suspend = useSuspendUser()
   const reactivate = useReactivateUser()
   const changeRole = useChangeRole()
+  const resetPassword = useResetPassword()
 
   const [reason, setReason] = useState('')
   const [days, setDays] = useState<number | null>(7)
   const [role, setRole] = useState<Role>(user.role)
 
   const error =
-    message(suspend.error) ?? message(reactivate.error) ?? message(changeRole.error)
+    message(suspend.error) ??
+    message(reactivate.error) ??
+    message(changeRole.error) ??
+    message(resetPassword.error)
 
   if (isSelf) {
     return (
@@ -582,8 +587,64 @@ function Actions({ user, isSelf }: { user: AdminUser; isSelf: boolean }) {
             </div>
           )}
         </div>
+
+        <Password user={user} reset={resetPassword} />
       </div>
     </Card>
+  )
+}
+
+/**
+ * P6's other half. The forgot-password screen tells people an admin resets it,
+ * and this is where he does — so the block reads as the end of a phone call
+ * rather than as a button: what it does to the old password, the new one in
+ * one line big enough to read out, and the fact that closing the pane is the
+ * last time anybody sees it.
+ */
+function Password({
+  user,
+  reset,
+}: {
+  user: AdminUser
+  reset: ReturnType<typeof useResetPassword>
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="w-full border-t border-border pt-6">
+      <h4 className="text-sm font-semibold text-fg">{t('users.passwordTitle')}</h4>
+
+      {/* Refused before it is pressed. A new password for an account sign-in
+          turns away is five minutes on the phone spelling out a code, and then
+          the person reads "your account is suspended" for the first time. */}
+      {user.status !== 'active' ? (
+        <p className="mt-2 text-sm text-fg-muted">{t('users.passwordBlocked')}</p>
+      ) : reset.data ? (
+        <Alert tone="warning" className="mt-3">
+          <p className="font-semibold">{t('users.passwordOnce')}</p>
+          {/* `.numeric` for the same reason a plate number wears it: a Latin
+              code stays Latin and stays LTR, in all three languages. */}
+          <p className="numeric mt-2 text-xl font-bold tracking-widest text-fg">
+            {reset.data.password}
+          </p>
+          <p className="mt-2">{t('users.passwordThenChange')}</p>
+        </Alert>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-fg-muted">{t('users.passwordBody')}</p>
+          <ConfirmButton
+            className="mt-3"
+            variant="secondary"
+            tone="danger"
+            label={t('users.passwordReset')}
+            question={t('users.passwordQuestion')}
+            confirmLabel={t('users.passwordConfirm')}
+            loading={reset.isPending}
+            onConfirm={() => reset.mutate({ id: user.id })}
+          />
+        </>
+      )}
+    </div>
   )
 }
 

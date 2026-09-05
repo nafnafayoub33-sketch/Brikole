@@ -28,7 +28,8 @@ class WorkKind(StrEnum):
     REPORTS = "reports"
     #: A5 — confirming a bank transfer landed. The only work that moves money.
     MONEY = "money"
-    #: A3 and A9 — suspending, reactivating, changing a role, adding staff.
+    #: A3 and A9 — suspending, reactivating, changing a role, resetting a
+    #: password, adding staff.
     ACCOUNTS = "accounts"
     #: A4, A6, A7 — the settings, the catalogue, a cancelled request.
     PLATFORM = "platform"
@@ -47,6 +48,7 @@ KINDS: dict[str, WorkKind] = {
     AuditAction.USER_SUSPENDED: WorkKind.ACCOUNTS,
     AuditAction.USER_REACTIVATED: WorkKind.ACCOUNTS,
     AuditAction.USER_ROLE_CHANGED: WorkKind.ACCOUNTS,
+    AuditAction.PASSWORD_RESET: WorkKind.ACCOUNTS,
     AuditAction.STAFF_CREATED: WorkKind.ACCOUNTS,
     AuditAction.SETTING_CHANGED: WorkKind.PLATFORM,
     AuditAction.REQUEST_CANCELLED: WorkKind.PLATFORM,

@@ -22,6 +22,7 @@ from app.core.permissions import Permission, has_permission
 from app.core.phone import normalise_phone
 from app.core.security import hash_password, validate_password
 from app.core.staff_work import Work, summarise
+from app.core.temp_password import generate as generate_password
 from app.models.base import utcnow
 from app.models.dispute import Dispute
 from app.models.user import User
@@ -194,6 +195,50 @@ class StaffService:
         self.db.refresh(target)
         return target
 
+    def reset_password(
+        self, actor: User, user_id: int, *, ip: str | None = None
+    ) -> str:
+        """P6 — the reset the forgot-password screen promises.
+
+        Returns the new password in plaintext, once. It is never stored in
+        anything but its argon2 hash and never written to the audit log: the
+        row records that a reset happened and who did it, which is the part
+        that has to survive.
+
+        The lockout goes with it. Somebody who has forgotten his password has
+        almost always just proved it five times, so he is locked out for
+        fifteen minutes — and a new password that still answers "too many
+        attempts" is a second phone call.
+
+        What this cannot do is end a session already open elsewhere: the tokens
+        are signed, not stored, so nothing exists to revoke. A stolen account
+        needs `suspend`, and that is what it is for.
+        """
+        target = self.get(user_id)
+        rules.assert_not_self(actor.id, target.id)
+        rules.assert_can_sign_in(target.status)
+
+        password = generate_password()
+
+        before = _lock(target)
+        target.password_hash = hash_password(password)
+        target.failed_login_attempts = 0
+        target.locked_until = None
+
+        audit.record(
+            self.db,
+            actor=actor,
+            action=AuditAction.PASSWORD_RESET,
+            target_type="user",
+            target_id=target.id,
+            before=before,
+            after=_lock(target),
+            ip=ip,
+        )
+
+        self.db.commit()
+        return password
+
     def create_staff(
         self,
         actor: User,
@@ -238,6 +283,16 @@ class StaffService:
         self.db.commit()
         self.db.refresh(created)
         return created
+
+
+def _lock(user: User) -> dict[str, str | int | None]:
+    """The lockout, before and after. The hash is not in here and must not be:
+    an audit log holding password material is a second copy of the thing the
+    hashing was for."""
+    return {
+        "failed_login_attempts": user.failed_login_attempts,
+        "locked_until": user.locked_until.isoformat() if user.locked_until else None,
+    }
 
 
 def _snapshot(user: User) -> dict[str, str | None]:

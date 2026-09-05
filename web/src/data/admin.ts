@@ -330,6 +330,28 @@ export function useChangeRole() {
   )
 }
 
+/**
+ * P6 — the reset A3 hands out.
+ *
+ * Deliberately not a `useAccountAction`: that one caches the response under the
+ * user's key, and a live credential is the last thing that should sit in a
+ * query cache waiting to be read out of a devtools panel. The password is
+ * returned once, held in the mutation for as long as the pane is open, and
+ * never written anywhere else. Invalidating still refreshes the account — the
+ * lockout it just lifted is on that screen.
+ */
+export function useResetPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) =>
+      api<{ password: string }>(`/admin/users/${id}/reset-password`, { method: 'POST' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: USERS_KEY })
+      void queryClient.invalidateQueries({ queryKey: AUDIT_KEY })
+    },
+  })
+}
+
 export function useCreateStaff() {
   return useAccountAction(
     (body: { phone: string; full_name: string; password: string; role: Role }) =>

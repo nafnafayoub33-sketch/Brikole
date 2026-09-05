@@ -107,7 +107,22 @@ Trades & cities · Settings · Audit log.
 - → client: C2 · m3allem: M1
 
 ### P6 · Forgot password — `/forgot`
-- Phase 4 — needs SMS. Until then the screen explains that an admin resets it.
+- SMS reset is Phase 4. Until then the reset is a phone call, and the screen says
+  so — but as three steps rather than an apology, because somebody who has just
+  been locked out needs to know who does it and what happens next:
+  1. call the admin from the number the account is on — the number is the identity;
+  2. he reads back a temporary password, letter by letter;
+  3. sign in with it, then change it from your own account.
+- The admin's end of that same call is on **A3**, under *Password*. The password
+  is generated, never invented: `core/temp_password.py` draws from an alphabet
+  with no `O`/`0`, `I`/`1` or `S`/`5` in it, upper case, in groups of four
+  (`ABCD-EF34-7HJK`), because it is spoken rather than copied.
+- The reset also clears the sign-in lockout. Somebody who forgot his password has
+  usually just proved it five times, and a new password that still answers "too
+  many attempts" is a second phone call.
+- What it cannot do is end a session already open somewhere else: the tokens are
+  signed, not stored, so there is nothing to revoke. A stolen account is a
+  suspension, not a reset.
 
 ---
 
@@ -628,8 +643,12 @@ being read — never leaves the screen.
   a zero is a fact worth showing. Then the tradesman profile with its wallet, and
   every dispute the person is in, either side, each linking to D2.
 - **Actions:** suspend (7 / 30 / 90 days, or permanent — permanent is an admin's
-  alone) · reactivate · **change role**, the only place a role changes · create a
-  moderator or an admin.
+  alone) · reactivate · **change role**, the only place a role changes · **reset
+  the password**, which is P6's other half · create a moderator or an admin.
+- **The password.** Shown once, in one line big enough to read down a phone, with
+  the warning that it will not be shown again. It is never cached and never
+  logged: the audit row records that a reset happened and who did it, which is the
+  part that has to survive.
 - All of it confirmed, all of it audited: the change and its audit row are written
   in the same transaction, with the before/after diff and the reason.
 
@@ -642,6 +661,10 @@ What it refuses, and why:
   profile, invisible to every screen that expects one.
 - **Changing the role of somebody who has that profile.** His offers, jobs and
   credit all hang off it. The role panel says this instead of offering a select.
+- **Resetting the password of a suspended account.** Five minutes on the phone
+  spelling out a code, and the person types it and reads "your account is
+  suspended" for the first time. The password block says why instead of offering
+  the button; the suspension gets lifted or explained first.
 - **Taking the last active admin.** Kept as the platform's invariant even though
   A3 cannot reach it: the caller is always an active admin, so the self-refusal
   gets there first.

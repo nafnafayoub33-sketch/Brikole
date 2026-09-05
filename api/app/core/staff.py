@@ -1,8 +1,8 @@
 """A3 — the rules for changing somebody else's account.
 
 This is the screen with the most power on the platform, so the refusals are
-here, in one framework-free place, rather than spread across a router. Four of
-them, and each one is a real way to break the product:
+here, in one framework-free place, rather than spread across a router. Each one
+is a real way to break the product, or a real way to waste somebody's evening:
 
 * An admin acting on his own account. Suspending yourself locks you out of the
   screen that would undo it.
@@ -13,6 +13,9 @@ them, and each one is a real way to break the product:
   no profile, invisible to every screen that expects one.
 * Changing the role of someone who *has* that profile. His offers, jobs and
   credit all hang off it, and none of them survive him becoming a client.
+* Resetting the password of an account that cannot sign in anyway. The admin
+  spends five minutes on the phone spelling out a code, and the person types it
+  and reads "your account is suspended".
 """
 
 from __future__ import annotations
@@ -125,4 +128,16 @@ def build_suspension(
 def assert_suspended(status: UserStatus) -> None:
     """Reactivating an account nobody suspended is a bug in the caller."""
     if status is not UserStatus.SUSPENDED:
+        raise DomainError(ErrorCode.CONFLICT, status=status.value)
+
+
+def assert_can_sign_in(status: UserStatus) -> None:
+    """P6 — there is no point resetting a password sign-in would refuse anyway.
+
+    A new password for a suspended account is worse than no password: it is a
+    phone call that ends in the person typing a code and being told, for the
+    first time, that they are suspended. The admin lifts the suspension or
+    explains it; either way that conversation comes first.
+    """
+    if status is not UserStatus.ACTIVE:
         raise DomainError(ErrorCode.CONFLICT, status=status.value)

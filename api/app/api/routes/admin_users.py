@@ -24,6 +24,7 @@ from app.schemas.catalog import CityOut
 from app.schemas.common import Page
 from app.schemas.staff import (
     NewStaffIn,
+    PasswordResetOut,
     RoleIn,
     StaffMemberOut,
     StaffRosterOut,
@@ -142,6 +143,17 @@ def change_role(
     service = StaffService(db)
     user = service.change_role(actor, user_id, role=payload.role, ip=_ip(request))
     return _detail(user, service, db)
+
+
+@router.post("/{user_id}/reset-password", response_model=PasswordResetOut)
+def reset_password(
+    user_id: int, actor: CurrentUser, db: DbSession, request: Request
+) -> PasswordResetOut:
+    """P6. The screen tells people an admin resets their password; this is him
+    doing it, and the answer is the password itself — returned once and stored
+    nowhere the admin can read it again."""
+    password = StaffService(db).reset_password(actor, user_id, ip=_ip(request))
+    return PasswordResetOut(password=password)
 
 
 @router.post("", response_model=UserDetailOut, status_code=201)
