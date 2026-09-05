@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import Select, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.core.enums import ProviderStatus
 from app.core.policy import DEFAULTS
 from app.models.catalog import City, Trade
+from app.models.job import Job
 from app.models.provider import ProviderProfile, provider_trades
+from app.models.request import ServiceRequest
 from app.models.system import PlatformSetting
 
 
@@ -63,6 +66,102 @@ class CatalogRepository:
         if only_active:
             stmt = stmt.where(City.is_active.is_(True))
         return list(self.db.execute(stmt).scalars())
+
+
+@dataclass(frozen=True, slots=True)
+class Usage:
+    """What points at one trade or one city.
+
+    A6 shows these beside the switch. Deactivating is not a delete and never
+    loses a row, but "this hides a trade 41 tradesmen work in" is the
+    difference between a decision and a click.
+    """
+
+    providers: int
+    requests: int
+    jobs: int
+
+
+class AdminCatalogRepository:
+    """A6's view: the same two lists, including what the public never sees."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def trades(self) -> list[Trade]:
+        """Inactive ones included — this is the screen that turns them back on."""
+        return list(
+            self.db.execute(select(Trade).order_by(Trade.sort_order, Trade.slug)).scalars()
+        )
+
+    def cities(self) -> list[City]:
+        return list(self.db.execute(select(City).order_by(City.name_fr)).scalars())
+
+    def trade(self, trade_id: int) -> Trade | None:
+        return self.db.get(Trade, trade_id)
+
+    def city(self, city_id: int) -> City | None:
+        return self.db.get(City, city_id)
+
+    def slug_taken(self, model: type[Trade] | type[City], slug: str) -> bool:
+        return (
+            self.db.execute(select(model.id).where(model.slug == slug)).first() is not None
+        )
+
+    def trade_usage(self) -> dict[int, Usage]:
+        """Counted for every trade in three queries, not three per row.
+
+        Keyed by id and joined in Python: a single query walking three
+        one-to-many paths at once multiplies its own rows, and the totals come
+        back quietly wrong.
+        """
+        providers = self._counts(
+            select(provider_trades.c.trade_id, func.count())
+            .group_by(provider_trades.c.trade_id)
+        )
+        requests = self._counts(
+            select(ServiceRequest.trade_id, func.count()).group_by(ServiceRequest.trade_id)
+        )
+        jobs = self._counts(
+            select(ServiceRequest.trade_id, func.count())
+            .join(Job, Job.request_id == ServiceRequest.id)
+            .group_by(ServiceRequest.trade_id)
+        )
+        return {
+            trade.id: Usage(
+                providers=providers.get(trade.id, 0),
+                requests=requests.get(trade.id, 0),
+                jobs=jobs.get(trade.id, 0),
+            )
+            for trade in self.trades()
+        }
+
+    def city_usage(self) -> dict[int, Usage]:
+        providers = self._counts(
+            select(ProviderProfile.city_id, func.count()).group_by(ProviderProfile.city_id)
+        )
+        requests = self._counts(
+            select(ServiceRequest.city_id, func.count()).group_by(ServiceRequest.city_id)
+        )
+        jobs = self._counts(
+            select(ServiceRequest.city_id, func.count())
+            .join(Job, Job.request_id == ServiceRequest.id)
+            .group_by(ServiceRequest.city_id)
+        )
+        return {
+            city.id: Usage(
+                providers=providers.get(city.id, 0),
+                requests=requests.get(city.id, 0),
+                jobs=jobs.get(city.id, 0),
+            )
+            for city in self.cities()
+        }
+
+    def _counts(self, stmt: Select[tuple[int, int]]) -> dict[int, int]:
+        # Every key here is a NOT NULL foreign key, so there is nothing to
+        # filter out — a missing id simply does not appear, and the callers
+        # read it back with a default of zero.
+        return {key: count for key, count in self.db.execute(stmt).all()}
 
 
 class SettingsRepository:

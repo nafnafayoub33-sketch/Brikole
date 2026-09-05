@@ -658,9 +658,41 @@ to it.
 - **States:** loading · empty · approve failed because it was already handled
 
 ### A6 · Trades and cities — `/admin/catalog`
-- CRUD on trades (name in three languages, icon, `lead_fee_centimes`, active) and
-  cities. Deactivating a trade hides it from C1 and stops its feed; it never deletes
-  history.
+The two lists everything else points at. Trades (three names, icon,
+`lead_fee_centimes`, sort order) and cities (three names, coordinates), on one
+screen behind two tabs.
+
+- **Nothing here is ever deleted, and the screen says so at the top.** A trade
+  has requests, offers, jobs and profiles hanging off it; removing the row
+  would either take the history with it or leave dangling references. Hiding is
+  the only removal: it stops the trade being offered at C1, closes its feed, and
+  changes nothing that already happened. There is no delete button because there
+  is no delete endpoint.
+- **Every row carries what points at it** — tradesmen, requests, jobs — and the
+  hide confirmation repeats the numbers. "Hide a trade 41 tradesmen work in" is
+  a decision; a bare switch is a click.
+- **Turning something back on asks nothing.** It adds an option and breaks
+  nothing; only turning it off needs the question.
+- **The slug is set once and never edited.** It is in `/services/:slug` and in
+  every link anybody has shared, so changing it would turn all of them into a
+  silent 404. The edit form states it and says why, rather than showing a
+  disabled box — an input nobody can type in reads as broken, a sentence reads
+  as a reason. Renaming a trade means editing its three names, which is what a
+  reader actually sees.
+- **All three languages are mandatory.** A trade with no Arabic name is a blank
+  row to this product's default audience. The list shows the other two
+  languages beside each row, so a missing translation is visible without
+  opening the form.
+- **An empty fee means the platform default, never free.** Zero is a different
+  answer and the hint says so.
+- **Inactive rows are on this screen and no other.** It is the screen that turns
+  them back on, so it is the one list that cannot filter them out.
+- Every create, edit and toggle writes an `audit_log` row, and an edit logs
+  **only the fields that moved** — a log with an entry per save, listing eight
+  unchanged fields, cannot answer "when did this fee change".
+- **States:** loading · error with retry · the two lists · adding · editing ·
+  hide confirm with its counts · a rejected value named on its field
+- → A7
 
 ### A7 · Settings — `/admin/settings`
 - The fee per accepted job and the monthly price of placement; free jobs for a

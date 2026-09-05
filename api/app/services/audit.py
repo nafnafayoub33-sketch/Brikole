@@ -30,6 +30,10 @@ class AuditAction:
     USER_ROLE_CHANGED = "user.role_changed"
     STAFF_CREATED = "staff.created"
     REQUEST_CANCELLED = "request.cancelled"
+    TRADE_CREATED = "trade.created"
+    TRADE_UPDATED = "trade.updated"
+    CITY_CREATED = "city.created"
+    CITY_UPDATED = "city.updated"
 
 
 def record(
